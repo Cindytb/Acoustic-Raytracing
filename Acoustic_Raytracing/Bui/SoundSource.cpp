@@ -41,7 +41,8 @@ SoundSource::SoundSource(gdt::vec3f pos, gdt::vec3f orientation)
 	checkCudaErrors(cudaMalloc(&local_histogram->d_transmitted,
 		freq_bands * num_rays * sizeof(float)));
 	m_histogram = new float[MAX_NUM_MICS * time_bins * freq_bands];
-	m_irs = new float[MAX_NUM_MICS * time_thres * fs]; // maximum length of an IR
+	size_t size = MAX_NUM_MICS * time_thres * fs;
+	m_irs = new float[size]; // maximum length of an IR
 	for (int i = 0; i < MAX_NUM_MICS * time_thres * fs; i++)
 	{
 		m_irs[i] = 0.0f;

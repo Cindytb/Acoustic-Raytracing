@@ -22,8 +22,8 @@
 #include "kernels.cuh"
 #include "gdt/math/AffineSpace.h"
 
-#include "Bui/Microphone.h";
-#include "Bui/SoundSource.h";
+#include "Bui/Microphone.h"
+#include "Bui/SoundSource.h"
 
 /*! \namespace osc - Optix Siggraph Course */
 namespace osc {
