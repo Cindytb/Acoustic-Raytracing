@@ -14,13 +14,13 @@
 # limitations under the License.                                           #
 # ======================================================================== #
 
-find_package(OpenGL REQUIRED)
 find_package(CUDA REQUIRED)
-include_directories(${OptiX_INCLUDE}, ${PROJECT_SOURCE_DIR}/common/cuda_helpers, "D:/Visual Studio Dependences/include")
+include_directories(${OptiX_INCLUDE}, ${PROJECT_SOURCE_DIR}/common/cuda_helpers /share/apps/libsndfile/1.0.28/intel/include)
+link_directories(/share/apps/libsndfile/1.0.28/intel/lib /share/apps/cuda/10.1.105/lib64/stubs) # hardcoded for the prince HPC cluster
 
 cuda_compile_and_embed(embedded_ptx_code devicePrograms.cu)
 
-cuda_add_executable(Acoustic_Raytracing
+cuda_add_executable(executable.out # need to rename this to a file name not folder name
   kernels.cu
   kernels.cuh
   ${embedded_ptx_code}
@@ -42,14 +42,13 @@ cuda_add_executable(Acoustic_Raytracing
   Bui/convolve.cu
   Bui/convolve.cuh
   )
-target_link_libraries(Acoustic_Raytracing
+target_link_libraries(executable.out
   gdt
   # optix dependencies, for rendering
   ${optix_LIBRARY}
   ${CUDA_LIBRARIES}
-  ${CUDA_CUDA_LIBRARY}
-  # glfw and opengl, for display
-  glfWindow
-  glfw
-  ${OPENGL_gl_LIBRARY}
+  # ${CUDA_CUDA_LIBRARY}
+  sndfile.so # linking soundfile
+  libcuda.so # cuda driver runtime
+  ${CUDA_cufft_LIBRARY} #cufft
   )

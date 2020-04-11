@@ -14,6 +14,15 @@
 # limitations under the License.                                           #
 # ======================================================================== #
 
+# Adding this because cmake had issues with the cuda requirement 
+# and finding the threads library
+set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+set(CMAKE_HAVE_THREADS_LIBRARY 1)
+set(CMAKE_USE_WIN32_THREADS_INIT 0)
+set(CMAKE_USE_PTHREADS_INIT 1)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+
+
 if (POLICY CMP0048)
   cmake_policy(SET CMP0048 NEW)
 endif (POLICY CMP0048)
@@ -35,7 +44,7 @@ set(gdt_dir ${PROJECT_SOURCE_DIR}/common/gdt/)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${gdt_dir}/cmake/")
 include(${gdt_dir}/cmake/configure_build_type.cmake)
 include(${gdt_dir}/cmake/configure_optix.cmake)
-
+include_directories(/share/apps/gcc/6.3.0/include/c++/6.3.0) #hardcoded for the prince HPC cluster
 mark_as_advanced(CUDA_SDK_ROOT_DIR)
 
 # ------------------------------------------------------------------

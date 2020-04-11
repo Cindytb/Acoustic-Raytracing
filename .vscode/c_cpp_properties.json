@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/common/**",
+                "${workspaceFolder}/common/cuda_helpers",
+                "${workspaceFolder}/common/gdt",
+                "${workspaceFolder}/Acoustic_Raytracing",
+                "/share/apps/gcc/6.3.0/include/c++/6.3.0",
+                "/home/ctb335/NVIDIA-OptiX-SDK-7.0.0-linux64/include",
+                "/share/apps/libsndfile/1.0.28/intel/include"
+
+            ],
+            "defines": [],
+            "compilerPath": "/share/apps/gcc/6.3.0/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "clang-x64"
+        }
+    ],
+    "version": 4
+}

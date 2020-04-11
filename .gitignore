@@ -9,6 +9,5 @@ build
 Session.vim
 /models/*
 *.swp
-.vscode
 *.wav.*
 *.wav
