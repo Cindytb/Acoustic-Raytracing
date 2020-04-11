@@ -11,3 +11,4 @@ Session.vim
 *.swp
 *.wav.*
 *.wav
+slurm*.out
