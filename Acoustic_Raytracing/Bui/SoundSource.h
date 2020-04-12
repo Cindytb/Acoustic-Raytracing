@@ -47,7 +47,7 @@ public:
 	void convolve_file(std::string input_file,
 		std::string output_file,
 		int mic_no);
-	void SoundSource::addBuffer(float *input, float* output, int mic_no);
+	void addBuffer(float *input, float* output, int mic_no);
 	osc::LaunchParams* local_histogram;
 private:
 	float* output;
