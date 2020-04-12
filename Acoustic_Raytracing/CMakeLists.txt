@@ -14,13 +14,14 @@
 # limitations under the License.                                           #
 # ======================================================================== #
 
-find_package(OpenGL REQUIRED)
 find_package(CUDA REQUIRED)
-include_directories(${OptiX_INCLUDE}, ${PROJECT_SOURCE_DIR}/common/cuda_helpers, "D:/Visual Studio Dependences/include")
-
+include_directories(${OptiX_INCLUDE} ${PROJECT_SOURCE_DIR}/common/cuda_helpers ${SNDFILE_INCLUDE_DIR} ${PORTAUDIO_INCLUDE_DIR})
+link_directories(${SNDFILE_INCLUDE_DIR} ${PORTAUDIO_INCLUDE_DIR})
 cuda_compile_and_embed(embedded_ptx_code devicePrograms.cu)
 
 cuda_add_executable(Acoustic_Raytracing
+  audio.cpp
+  audio.h
   kernels.cu
   kernels.cuh
   ${embedded_ptx_code}
@@ -48,8 +49,7 @@ target_link_libraries(Acoustic_Raytracing
   ${optix_LIBRARY}
   ${CUDA_LIBRARIES}
   ${CUDA_CUDA_LIBRARY}
-  # glfw and opengl, for display
-  glfWindow
-  glfw
-  ${OPENGL_gl_LIBRARY}
+  ${SNDFILE_LIB}
+  ${PORTAUDIO_LIB}
+  ${CUDA_cufft_LIBRARY}
   )

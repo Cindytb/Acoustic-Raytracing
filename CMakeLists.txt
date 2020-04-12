@@ -25,6 +25,15 @@ if (NOT WIN32)
 # visual studio doesn't like these (not need them):
 set (CMAKE_CXX_FLAGS "--std=c++11")
 set (CUDA_PROPAGATE_HOST_FLAGS ON)
+set (SNDFILE_LIB sndfile.so)
+set (PORTAUDIO_LIB libportaudio.so)
+set (SNDFILE_INCLUDE_DIR /usr/include) # For standalone linux
+set (PORTAUDIO_INCLUDE_DIR /usr/include) # For standalone linux
+else(WIN32)
+set (SNDFILE_LIB libsndfile-1.lib)
+set (PORTAUDIO_LIB portaudio_x64.lib)
+set (SNDFILE_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/common/libsndfile) # For windows, put precompiled .lib in repo
+set (PORTAUDIO_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/common/portaudio) # For windows, put precompiled .lib in repo
 endif()
 
 # ------------------------------------------------------------------
