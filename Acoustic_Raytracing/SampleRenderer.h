@@ -85,6 +85,8 @@ namespace osc {
 		void auralize();
 		void add_mic(Microphone *mic);
 		void add_source(SoundSource *src);
+		
+		std::vector<SoundSource*> get_sources();
 	protected:
 		// ------------------------------------------------------------------
 		// internal helper functions

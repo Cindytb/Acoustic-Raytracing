@@ -1,4 +1,5 @@
 # TODOs:
+- [ ] Make sure the portaudio functionality works because the current IR isn't auralizable
 - [ ] Advanced IR synthesis from the histogram
 - [ ] Perform benchmarking with pyroomacoustics for thesis
 - [ ] Transition to realtime processing

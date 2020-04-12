@@ -17,6 +17,10 @@
 #include "SampleRenderer.h"
 #include "audio.h"
 
+#include <chrono>
+#include <thread>
+
+
 /*! \namespace osc - Optix Siggraph Course */
 namespace osc
 {
@@ -32,10 +36,13 @@ namespace osc
 			exit(1);
 		}
 	}
-	void auralize_loop(int ac, char** av) {
+	void auralize_loop(SampleRenderer* renderer) {
 		try
 		{
-			initializePA(SoundItem::fs);
+			renderer->auralize();
+			initializePA(SoundItem::fs, renderer);
+
+			std::this_thread::sleep_for(std::chrono::seconds(20));
 		}
 		catch (std::runtime_error& e)
 		{
@@ -78,11 +85,11 @@ namespace osc
 		SampleRenderer* renderer = new SampleRenderer(model);
 		SoundSource* src = new SoundSource();
 		Microphone* mic = new Microphone();
-		renderer->add_mic(mic);
 		renderer->add_source(src);
-		renderer->auralize();
+		renderer->add_mic(mic);
 
-		export_to_file(renderer);
+		//export_to_file(renderer);
+		auralize_loop(renderer);
 		return 0;
 	}
 	

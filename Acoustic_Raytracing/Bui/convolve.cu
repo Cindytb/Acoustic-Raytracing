@@ -108,4 +108,47 @@ namespace cufft {
 		int numBlocks = (padded_size + blockSize - 1) / blockSize;
 		RealFloatScale << < blockSize, numBlocks >> > (d_input, padded_size, 1.0 / max);
 	}
+	void forward_fft_wrapper(float* d_input, size_t padded_size){
+		/*Create forward FFT plan*/
+		cufftHandle plan;
+		CHECK_CUFFT_ERRORS(cufftCreate(&plan));
+		CHECK_CUFFT_ERRORS(cufftPlan1d(&plan, padded_size, CUFFT_R2C, 1));
+		CHECK_CUFFT_ERRORS(cufftExecR2C(plan, d_input, (cufftComplex*)d_input));
+		CHECK_CUFFT_ERRORS(cufftDestroy(plan));
+	}
+	void inverse_fft_wrapper(float* d_input, size_t padded_size){
+		cufftHandle plan;
+		CHECK_CUFFT_ERRORS(cufftCreate(&plan));
+		CHECK_CUFFT_ERRORS(cufftPlan1d(&plan, padded_size, CUFFT_C2R, 1));
+		CHECK_CUFFT_ERRORS(cufftExecC2R(plan, (cufftComplex*)d_input, d_input));
+		CHECK_CUFFT_ERRORS(cufftDestroy(plan));
+	}
+	void convolve_ifft_wrapper(cufftComplex* d_ibuf, cufftComplex* d_rbuf, size_t padded_size){
+		/*Create inverse FFT plan*/
+		cufftHandle outplan;
+		CHECK_CUFFT_ERRORS(cufftCreate(&outplan));
+		CHECK_CUFFT_ERRORS(cufftPlan1d(&outplan, padded_size, CUFFT_C2R, 1));
+#if defined WIN64 || CB == 0
+		/*NO CB VERSION*/
+		/*CONVOLUTION*/
+		int blockSize = 256;
+		int numBlocks = (padded_size + blockSize - 1) / blockSize;
+
+		ComplexPointwiseMul << < numBlocks, blockSize >> > ((cufftComplex*)d_ibuf, (cufftComplex*)d_rbuf, padded_size / 2 + 1);
+		getLastCudaError("Kernel execution failed [ ComplexPointwiseMul]");
+		checkCudaErrors(cudaDeviceSynchronize());
+#else
+		/*Copy over the host copy of callback function*/
+		cufftCallbackLoadC hostCopyOfCallbackPtr;
+		checkCudaErrors(cudaMemcpyFromSymbol(&hostCopyOfCallbackPtr, myOwnCallbackPtr,
+			sizeof(hostCopyOfCallbackPtr)));
+
+		/*Associate the load callback with the plan*/
+		CHECK_CUFFT_ERRORS(cufftXtSetCallback(outplan, (void**)&hostCopyOfCallbackPtr, CUFFT_CB_LD_COMPLEX,
+			(void**)&d_rbuf));
+
+#endif
+		CHECK_CUFFT_ERRORS(cufftExecC2R(outplan, (cufftComplex*)d_ibuf, (cufftReal*)d_ibuf));
+		checkCudaErrors(cufftDestroy(outplan));
+	}
 }

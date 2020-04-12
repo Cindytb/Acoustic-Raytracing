@@ -104,13 +104,13 @@ static int paCallback(const void* inputBuffer, void* outputBuffer,
 	osc::SampleRenderer* renderer = (osc::SampleRenderer*)userData;
 	float* output = (float*)outputBuffer;
 	float* input = (float*)inputBuffer;
-
+	renderer->get_sources()[0]->addBuffer(input, output, 0); // setting mic number to 0 for testing purposes
 	// Sending input directly back to output
 	// stereo output is interleaved
-	for (unsigned i = 0; i < framesPerBuffer; i++) {
+	/*for (unsigned i = 0; i < framesPerBuffer; i++) {
 		output[i * 2] = input[i];
 		output[i * 2 + 1] = input[i];
-	}
+	}*/
 	return 0;
 }
 

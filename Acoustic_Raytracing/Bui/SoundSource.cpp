@@ -35,31 +35,46 @@ SoundSource::SoundSource(gdt::vec3f pos, gdt::vec3f orientation)
 	time_bins = fs * time_thres * hist_bin_size;
 	checkCudaErrors(cudaStreamCreate(&m_stream));
 
+	/*An absolutely gigantic buffer of how much audio to store*/
+	buffer_size = next_pow_2(time_thres * fs + FRAMES_PER_BUFFER - 1);
+	buffered_input = new float[buffer_size];
+#pragma omp parallel for
+	for (size_t i = 0; i < buffer_size; i++)
+	{
+		buffered_input[i] = 0.0f;
+	}
+	checkCudaErrors(cudaMalloc(&d_buffered_input, (buffer_size + 2) * sizeof(float)));
+	scene_change = false;
+
 	checkCudaErrors(
 		cudaMalloc(&local_histogram->d_histogram,
 			MAX_NUM_MICS * time_bins * freq_bands * sizeof(float)));
 	checkCudaErrors(cudaMalloc(&local_histogram->d_transmitted,
 		freq_bands * num_rays * sizeof(float)));
-	m_histogram = new float[MAX_NUM_MICS * time_bins * freq_bands];
-	size_t size = MAX_NUM_MICS * time_thres * fs;
-	m_irs = new float[size]; // maximum length of an IR
-	for (int i = 0; i < MAX_NUM_MICS * time_thres * fs; i++)
-	{
-		m_irs[i] = 0.0f;
-	}
 	DEBUG_CHECK();
 	checkCudaErrors(
 		cudaMalloc((void**)&d_local_histogram, sizeof(osc::LaunchParams)));
-	fillWithZeroesKernel(local_histogram->d_histogram,
+	kernels::fillWithZeroesKernel(local_histogram->d_histogram,
 		MAX_NUM_MICS * time_bins * freq_bands,
 		m_stream);
-	fillWithZeroesKernel(
+	kernels::fillWithZeroesKernel(
 		local_histogram->d_transmitted, freq_bands * num_rays, m_stream);
 }
 
-void SoundSource::add_mic(Microphone mic)
+void SoundSource::add_mic(Microphone& mic)
 {
 	m_microphones.push_back(mic);
+	m_histogram.push_back(new float[time_bins * freq_bands]);
+	m_irs.push_back(new float[(size_t)(time_thres * fs)]);
+	float* d_buf;
+	checkCudaErrors(cudaMalloc(&d_buf, (buffer_size + 2) * sizeof(float)));
+	m_d_irs.push_back(d_buf);
+#pragma omp parallel for
+	for (int i = 0; i < (size_t)(time_thres * fs); i++)
+	{
+		m_irs[m_microphones.size() - 1][i] = 0.0f;
+	}
+	kernels::fillWithZeroesKernel(d_buf, buffer_size + 2, m_stream);
 }
 
 void SoundSource::trace()
@@ -79,7 +94,6 @@ void SoundSource::trace()
 		sizeof(osc::LaunchParams),
 		cudaMemcpyHostToDevice));
 
-
 	auto start = std::chrono::high_resolution_clock::now();
 	OPTIX_CHECK(optixLaunch(/*! pipeline we're launching launch: */
 		pipeline,
@@ -98,43 +112,52 @@ void SoundSource::trace()
 
 	std::cout << "Time taken by GPU function: "
 		<< duration.count() << " microseconds" << std::endl;
+	// for (int i = 0; i < num_mics; i++)
+	// {
+	// 	checkCudaErrors(cudaMemcpyAsync(m_histogram[i],
+	// 									local_histogram->d_histogram + i * time_bins * freq_bands,
+	// 									time_bins * freq_bands * sizeof(float),
+	// 									cudaMemcpyDeviceToHost,
+	// 									m_stream));
+	// }
 
-	checkCudaErrors(cudaMemcpyAsync(m_histogram,
-		local_histogram->d_histogram,
-		MAX_NUM_MICS * time_bins * freq_bands * sizeof(float),
-		cudaMemcpyDeviceToHost,
-		m_stream));
-	DEBUG_CHECK();
+	// DEBUG_CHECK();
 
 	// Used to do precision benchmarking between this implmentation
 	// and pyroomacoustics
-	std::ofstream myfile;
-	myfile.open("histogram.dump");
+	// std::ofstream myfile;
+	// myfile.open("histogram.dump");
 
-	for (int i = 0; i < time_bins; i++) {
-		myfile << m_histogram[i * freq_bands] << std::endl;
-	}
-	myfile.close();
+	// for (int i = 0; i < time_bins; i++)
+	// {
+	// 	myfile << m_histogram[0][i * freq_bands] << std::endl;
+	// }
+	// myfile.close();
 }
 
 void SoundSource::compute_IRs()
 {
+	int max_ir_length = (int)time_thres * fs;
 	int hist_bin_size_samples = SoundItem::fs * hist_bin_size;
-	checkCudaErrors(
-		cudaMemcpyAsync(m_histogram,
-			local_histogram->d_histogram,
-			MAX_NUM_MICS * time_bins * freq_bands * sizeof(float),
-			cudaMemcpyDeviceToHost,
-			m_stream));
+	for (int i = 0; i < num_mics; i++)
+	{
+		kernels::compute_irs_wrapper(local_histogram->d_histogram + i * time_bins * freq_bands,
+			m_d_irs[i],
+			hist_bin_size_samples,
+			time_bins,
+			freq_bands,
+			m_stream);
+	}
 	DEBUG_CHECK();
 	checkCudaErrors(cudaStreamSynchronize(m_stream));
 
-	int max_ir_length = (int)time_thres * fs;
+#pragma omp parallel for
 	for (int mic_no = 0; mic_no < num_mics; mic_no++)
 	{
+#pragma omp parallel for
 		for (int i = 0; i < time_bins; i++)
 		{
-			m_irs[mic_no * max_ir_length + i * hist_bin_size_samples] = m_histogram[mic_no * freq_bands * time_bins + i * freq_bands];
+			m_irs[mic_no][i * hist_bin_size_samples] = m_histogram[mic_no][i * freq_bands];
 		}
 	}
 
@@ -147,14 +170,54 @@ void SoundSource::compute_IRs()
 	myfile.close();*/
 }
 
-void TDconvolution(float* ibuf, float* rbuf, size_t iframes, size_t rframes, float* obuf) {
-	int oframes = iframes + rframes - 1;
+void SoundSource::convolve()
+{
+}
+void SoundSource::addBuffer(float* input, float* output, int mic_no)
+{
+	/*Copy into current buffer into x */
+	memcpy(
+		buffered_input + (buffer_size - FRAMES_PER_BUFFER), /*Go to the end and work backwards*/
+		input,
+		FRAMES_PER_BUFFER * sizeof(float));
+	checkCudaErrors(cudaMemcpy(d_buffered_input, buffered_input, (buffer_size + 2) * sizeof(float), cudaMemcpyHostToDevice));
+	cufft::forward_fft_wrapper(d_buffered_input, buffer_size);
+	if (scene_change)
+	{
+		trace();
+		compute_IRs();
+		for (int i = 0; i < num_mics; i++) {
+			cufft::forward_fft_wrapper(m_d_irs[i], buffer_size);
+		}
+		scene_change = false;
+	}
+	cufft::convolve_ifft_wrapper((cufftComplex*)d_buffered_input, (cufftComplex*)m_d_irs[mic_no], buffer_size);
+	checkCudaErrors(cudaMemcpy(buffered_input, d_buffered_input, buffer_size * sizeof(float), cudaMemcpyDeviceToHost));
+	for (int i = 0; i < FRAMES_PER_BUFFER; i++) {
+		output[i * 2] = buffered_input[buffer_size - FRAMES_PER_BUFFER + i];
+		output[i * 2 + 1] = buffered_input[buffer_size - FRAMES_PER_BUFFER + i];
+	}
+}
 
-	for (int i = 0; i < oframes; i++) {
+
+
+
+
+
+
+
+void TDconvolution(float* ibuf, float* rbuf, size_t iframes, size_t rframes, float* obuf)
+{
+	int oframes = iframes + rframes - 1;
+#pragma omp parallel for
+	for (int i = 0; i < oframes; i++)
+	{
 		obuf[i] = 0.0f;
 	}
-	for (size_t k = 0; k < rframes; k++) {
-		for (size_t n = 0; n < iframes; n++) {
+	for (size_t k = 0; k < rframes; k++)
+	{
+		for (size_t n = 0; n < iframes; n++)
+		{
 			obuf[k + n] += ibuf[n] * rbuf[k];
 		}
 	}
@@ -170,7 +233,8 @@ void SoundSource::convolve_file(std::string input_file,
 		printf("ERROR: only mono files allowed in this function\n");
 		exit(EXIT_FAILURE);
 	}
-	if (ifile.samplerate() != fs) {
+	if (ifile.samplerate() != fs)
+	{
 		printf("ERROR: Wrong sample rate\n");
 		exit(EXIT_FAILURE);
 	}
@@ -178,7 +242,7 @@ void SoundSource::convolve_file(std::string input_file,
 	int max_ir_length = (int)time_thres * fs;
 	for (int i = 0; i < max_ir_length; i++)
 	{
-		if (m_irs[mic_no * max_ir_length + i] > 0 || m_irs[mic_no * max_ir_length + i] < 0)
+		if (m_irs[mic_no][i] > 0 || m_irs[mic_no][i] < 0)
 		{
 			ir_length = i;
 		}
@@ -187,19 +251,23 @@ void SoundSource::convolve_file(std::string input_file,
 	int hist_bin_size_samples = SoundItem::fs * hist_bin_size;
 	float* ir = new float[ir_length + hist_bin_size_samples - 1];
 	float* ratchet_integrator = new float[hist_bin_size_samples];
-	for (int i = 0; i < hist_bin_size_samples; i++) {
+	for (int i = 0; i < hist_bin_size_samples; i++)
+	{
 		ratchet_integrator[i] = 1.0 / hist_bin_size_samples;
 	}
-	TDconvolution(m_irs + mic_no * max_ir_length, ratchet_integrator, ir_length, hist_bin_size_samples, ir);
+	TDconvolution(m_irs[mic_no], ratchet_integrator, ir_length, hist_bin_size_samples, ir);
 	float max_val = 0;
-	for (int i = 0; i < ir_length; i++) {
+	for (int i = 0; i < ir_length; i++)
+	{
 		float local_val = fabs(ir[i]);
-		if (local_val > max_val) {
+		if (local_val > max_val)
+		{
 			max_val = local_val;
 		}
 	}
 #pragma omp parallel for
-	for (int i = 0; i < ir_length; i++) {
+	for (int i = 0; i < ir_length; i++)
+	{
 		ir[i] /= max_val;
 	}
 	size_t oframes = ifile.frames() + ir_length - 1;
@@ -207,16 +275,17 @@ void SoundSource::convolve_file(std::string input_file,
 	float* input_buf, * d_input, * d_filter;
 	input_buf = new float[padded_size];
 #pragma omp parallel for
-	for (int i = 0; i < padded_size; i++) {
+	for (int i = 0; i < padded_size; i++)
+	{
 		input_buf[i] = 0.0f;
 	}
 	ifile.readf(input_buf, ifile.frames());
 	checkCudaErrors(cudaMalloc(&d_input, (padded_size + 2) * sizeof(float)));
 	checkCudaErrors(cudaMalloc(&d_filter, (padded_size + 2) * sizeof(float)));
-	fillWithZeroesKernel(d_input, padded_size + 2);
-	fillWithZeroesKernel(d_filter, padded_size + 2);
+	kernels::fillWithZeroesKernel(d_input, padded_size + 2);
+	kernels::fillWithZeroesKernel(d_filter, padded_size + 2);
 	checkCudaErrors(cudaMemcpy(d_input, input_buf, ifile.frames() * sizeof(float), cudaMemcpyHostToDevice));
-	checkCudaErrors(cudaMemcpy(d_filter, m_irs + mic_no * max_ir_length, ir_length * sizeof(float), cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMemcpy(d_filter, m_irs[mic_no], ir_length * sizeof(float), cudaMemcpyHostToDevice));
 
 	cufft::convolve(d_input, d_filter, padded_size);
 	checkCudaErrors(cudaDeviceSynchronize());
@@ -227,14 +296,17 @@ void SoundSource::convolve_file(std::string input_file,
 	checkCudaErrors(cudaMemcpy(input_buf, d_input, oframes * sizeof(float), cudaMemcpyDeviceToHost));
 	float max = 0;
 
-	for (int i = 0; i < oframes; i++) {
+	for (int i = 0; i < oframes; i++)
+	{
 		float local_val = fabs(input_buf[i]);
-		if (local_val > max) {
+		if (local_val > max)
+		{
 			max = local_val;
 		}
 	}
 #pragma omp parallel for
-	for (int i = 0; i < oframes; i++) {
+	for (int i = 0; i < oframes; i++)
+	{
 		input_buf[i] /= max;
 	}
 	SndfileHandle ofile = SndfileHandle(output_file, SFM_WRITE, SF_FORMAT_WAV | SF_FORMAT_PCM_24, 1, fs);
@@ -244,14 +316,16 @@ void SoundSource::convolve_file(std::string input_file,
 	checkCudaErrors(cudaFree(d_filter));
 	delete[] input_buf;
 }
-void SoundSource::convolve()
-{
-}
 SoundSource::~SoundSource()
 {
 	num_src--;
+	delete[] buffered_input;
 	checkCudaErrors(cudaFree(local_histogram->d_histogram));
-	delete[] m_histogram;
+	for (int i = 0; i < num_mics; i++)
+	{
+		delete[] m_histogram[i];
+		delete[] m_irs[i];
+	}
 	checkCudaErrors(cudaFree(local_histogram->d_transmitted));
 	checkCudaErrors(cudaFree(d_local_histogram));
 }

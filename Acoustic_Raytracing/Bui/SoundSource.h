@@ -40,21 +40,27 @@ public:
 	SoundSource(gdt::vec3f pos, gdt::vec3f orientation);
 	~SoundSource();
 	
-	void add_mic(Microphone mic);
+	void add_mic(Microphone &mic);
 	void trace();
 	void compute_IRs();
 	void convolve();
 	void convolve_file(std::string input_file,
 		std::string output_file,
 		int mic_no);
+	void SoundSource::addBuffer(float *input, float* output, int mic_no);
 	osc::LaunchParams* local_histogram;
 private:
-
+	float* output;
+	float* buffered_input;
+	float* d_buffered_input;
+	size_t buffer_size;
 	osc::LaunchParams* d_local_histogram;
-	float* m_histogram;
-	float* m_irs;
+	std::vector<float*> m_histogram;
+	std::vector<float*> m_irs;
+	std::vector<float*> m_d_irs;
 	int m_ir_nonzero_length;
 	std::vector<Microphone> m_microphones;
 	cudaStream_t m_stream;
 	SndfileHandle* file;
+	bool scene_change;
 };

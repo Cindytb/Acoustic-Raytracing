@@ -279,8 +279,8 @@ SampleRenderer::SampleRenderer(const std::vector<TriangleMesh> &meshes)
 	unsigned long long N_RAYS = 1024;
 	checkCudaErrors(cudaMalloc(&(launchParams.d_histogram), STRIDE * MAX_MICS * sizeof(float)));
 	checkCudaErrors(cudaMalloc(&(launchParams.d_transmitted), launchParams.freq_bands * N_RAYS * sizeof(float)));
-	fillWithZeroesKernel(launchParams.d_histogram, STRIDE * MAX_MICS);
-	fillWithZeroesKernel(launchParams.d_transmitted, launchParams.freq_bands * MAX_MICS);
+	kernels::fillWithZeroesKernel(launchParams.d_histogram, STRIDE * MAX_MICS);
+	kernels::fillWithZeroesKernel(launchParams.d_transmitted, launchParams.freq_bands * MAX_MICS);
 	DEBUG_CHECK();
 	std::cout << "#osc: setting up optix pipeline ..." << std::endl;
 	createPipeline();
@@ -766,10 +766,16 @@ void SampleRenderer::downloadPixels(uint32_t h_pixels[])
 void SampleRenderer::add_mic(Microphone *mic)
 {
 	m_mics.push_back(mic);
+	for (int i = 0; i < m_sources.size(); i++) {
+		m_sources[i]->add_mic(*mic);
+	}
 }
 void SampleRenderer::add_source(SoundSource *src)
 {
 	m_sources.push_back(src);
+}
+std::vector<SoundSource*> SampleRenderer::get_sources(){
+	return m_sources;
 }
 
 void SampleRenderer::auralize()
