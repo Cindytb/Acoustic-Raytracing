@@ -173,6 +173,24 @@ void SoundSource::compute_IRs()
 void SoundSource::convolve()
 {
 }
+void SoundSource::HACK_upload_ir(std::string input_file) {
+	SndfileHandle ifile;
+	ifile = SndfileHandle(input_file);
+	if (ifile.channels() != 1)
+	{
+		printf("ERROR: only mono files allowed in this function\n");
+		exit(EXIT_FAILURE);
+	}
+	if (ifile.samplerate() != fs)
+	{
+		printf("ERROR: Wrong sample rate\n");
+		exit(EXIT_FAILURE);
+	}
+
+	ifile.readf(m_irs[0], ifile.frames());
+	checkCudaErrors(cudaMemcpy(m_d_irs[0], m_irs[0], ifile.frames() * sizeof(float), cudaMemcpyHostToDevice));
+	cufft::forward_fft_wrapper(m_d_irs[0], buffer_size);
+}
 void SoundSource::addBuffer(float* input, float* output, int mic_no)
 {
 	/*Copy into current buffer into x */
@@ -180,7 +198,7 @@ void SoundSource::addBuffer(float* input, float* output, int mic_no)
 		buffered_input + (buffer_size - FRAMES_PER_BUFFER), /*Go to the end and work backwards*/
 		input,
 		FRAMES_PER_BUFFER * sizeof(float));
-	checkCudaErrors(cudaMemcpy(d_buffered_input, buffered_input, (buffer_size + 2) * sizeof(float), cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMemcpy(d_buffered_input, buffered_input, buffer_size * sizeof(float), cudaMemcpyHostToDevice));
 	cufft::forward_fft_wrapper(d_buffered_input, buffer_size);
 	if (scene_change)
 	{
@@ -192,11 +210,17 @@ void SoundSource::addBuffer(float* input, float* output, int mic_no)
 		scene_change = false;
 	}
 	cufft::convolve_ifft_wrapper((cufftComplex*)d_buffered_input, (cufftComplex*)m_d_irs[mic_no], buffer_size);
-	checkCudaErrors(cudaMemcpy(buffered_input, d_buffered_input, buffer_size * sizeof(float), cudaMemcpyDeviceToHost));
-	for (int i = 0; i < FRAMES_PER_BUFFER; i++) {
-		output[i * 2] = buffered_input[buffer_size - FRAMES_PER_BUFFER + i];
-		output[i * 2 + 1] = buffered_input[buffer_size - FRAMES_PER_BUFFER + i];
+	cufft::normalize_fft(d_buffered_input, buffer_size);
+	checkCudaErrors(cudaMemcpy(output, d_buffered_input + buffer_size - FRAMES_PER_BUFFER, FRAMES_PER_BUFFER * sizeof(float), cudaMemcpyDeviceToHost));
+	for (int i = FRAMES_PER_BUFFER - 1; i >= 0; i--) {
+		output[i * 2] = output[i];
+		output[i * 2 + 1] = output[i];
 	}
+	/*Overlap-save*/
+	memmove(
+		buffered_input,
+		buffered_input + FRAMES_PER_BUFFER,
+		sizeof(float) * (buffer_size - FRAMES_PER_BUFFER));
 }
 
 

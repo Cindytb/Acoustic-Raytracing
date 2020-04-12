@@ -1,5 +1,5 @@
 # TODOs:
-- [ ] Make sure the portaudio functionality works because the current IR isn't auralizable
+- [x] Make sure the portaudio functionality works because the current IR isn't auralizable
 - [ ] Advanced IR synthesis from the histogram
 - [ ] Perform benchmarking with pyroomacoustics for thesis
 - [ ] Transition to realtime processing
@@ -12,6 +12,6 @@
 - [ ] Energy-decay prediction [4]
 
 ## Transition to realtime processing
-- [ ] Add portaudio library into the CMake files and build script
+- [x] Add portaudio library into the CMake files and build script
 - [ ] Attach portaudio callback to the sound source "receive buffer" method
 - [ ] Attach portaudio callback to each microphone's "send buffer" method

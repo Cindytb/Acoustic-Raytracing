@@ -36,13 +36,28 @@ namespace osc
 			exit(1);
 		}
 	}
+	void HACK_auralize_loop(SampleRenderer* renderer) {
+		
+		renderer->get_sources()[0]->HACK_upload_ir("../../reverb_mono_441.wav");
+		initializePA(SoundItem::fs, renderer);
+
+		std::cout << "Hit 'q' and 'Enter' to quit the program" << std::endl;
+		char q = 'a';
+		while (q != 'q') {
+			q = getchar();
+		}
+	}
 	void auralize_loop(SampleRenderer* renderer) {
 		try
 		{
 			renderer->auralize();
 			initializePA(SoundItem::fs, renderer);
 
-			std::this_thread::sleep_for(std::chrono::seconds(20));
+			std::cout << "Hit 'q' and 'Enter' to quit the program" << std::endl;
+			char q = 'a';
+			while (q != 'q') {
+				q = getchar();
+			}
 		}
 		catch (std::runtime_error& e)
 		{
@@ -89,7 +104,7 @@ namespace osc
 		renderer->add_mic(mic);
 
 		//export_to_file(renderer);
-		auralize_loop(renderer);
+		HACK_auralize_loop(renderer);
 		return 0;
 	}
 	
