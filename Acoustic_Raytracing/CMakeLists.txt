@@ -15,6 +15,9 @@
 # ======================================================================== #
 
 find_package(CUDA REQUIRED)
+cuda_select_nvcc_arch_flags(ARCH_FLAGS, Auto) # optional argument for arch to add
+LIST(APPEND CUDA_NVCC_FLAGS ${ARCH_FLAGS})
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -gencode=arch=compute_61,code=sm_61)
 include_directories(${OptiX_INCLUDE} ${PROJECT_SOURCE_DIR}/common/cuda_helpers ${SNDFILE_INCLUDE_DIR} ${PORTAUDIO_INCLUDE_DIR})
 link_directories(${SNDFILE_INCLUDE_DIR} ${PORTAUDIO_INCLUDE_DIR})
 cuda_compile_and_embed(embedded_ptx_code devicePrograms.cu)

@@ -51,6 +51,7 @@ public:
 	void HACK_upload_ir(std::string input_file);
 	osc::LaunchParams* local_histogram;
 private:
+	float* d_transfer_function;
 	float* output;
 	float* buffered_input;
 	float* d_buffered_input;

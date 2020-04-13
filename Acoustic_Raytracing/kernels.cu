@@ -4,6 +4,8 @@ namespace kernels {
 	int currDevice = -1;
 	cudaDeviceProp prop;
 	int numThreads = 256;
+	__global__ void dummyKernel()
+	{	}
 	void compute_irs_wrapper(float* d_histogram, float* d_ir, int hbss, size_t size_x, size_t size_y, cudaStream_t stream) {
 		int threads = 256;
 		int blocks = (hbss * size_x * size_y + threads - 1) / threads;

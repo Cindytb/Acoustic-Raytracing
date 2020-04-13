@@ -16,6 +16,7 @@
 
 #include <optix_device.h>
 #include "debug.cuh"
+#include "kernels.cuh"
 #include "prd.h"
 #include "LaunchParams.h"
 
@@ -23,6 +24,7 @@ using namespace osc;
 
 namespace osc
 {
+	
 	extern "C" __constant__ const double pi = 3.14159265358979323846;
 	extern "C" __constant__ const double pi_2 = 1.57079632679489661923;
 	/*! launch parameters in constant memory, filled in by optix upon
@@ -127,13 +129,28 @@ namespace osc
 				const float p_hit = (1 - sqrt(1 - 0.25 / max(0.25f, r_sq)));
 				//printf("Ray no: %i\ttravel_dist_at_mic %.10f\nRay no: %i\tTransmitted[0]: %.10f\nRay no: %i\tEnergy[0]: %.10f\nRay no: %i\tp_hit %.10f\n\n",
 					//ray_no, ray_data.distance, ray_no, ray_data.transmitted[0], ray_no, ray_data.transmitted[0] / (r_sq), ray_no, p_hit);
-
-				const unsigned STRIDE = optixLaunchParams.time_bins * optixLaunchParams.freq_bands;
+				float time_delay = ray_data.distance / optixLaunchParams.c;
+				float constant_section = -2.0f * pi * time_delay * optixLaunchParams.fs / (float)optixLaunchParams.buffer_size;
+				float energy = ray_data.transmitted[0] / (r_sq * p_hit);
+				float* transfer_function = optixLaunchParams.d_transfer_function + sbtData.micID * (optixLaunchParams.buffer_size + 2);
+				for (int i = 0; i < optixLaunchParams.buffer_size / 2 + 1; i++) {
+					const float theta = constant_section * i;
+					//hardcoding transmitted[0] for now
+					atomicAdd(
+						transfer_function + i * 2,
+						energy * cos(theta)
+					);
+					atomicAdd(
+						transfer_function + i * 2 + 1,
+						energy * sin(theta)
+					);
+				}
+				/*const unsigned STRIDE = optixLaunchParams.time_bins * optixLaunchParams.freq_bands;
 				for (unsigned i = 0; i < optixLaunchParams.freq_bands; i++)
 				{
 					unsigned idx = sbtData.micID * STRIDE + time_bin * optixLaunchParams.freq_bands + i;
 					atomicAdd(optixLaunchParams.d_histogram + idx, ray_data.transmitted[i] / (r_sq));
-				}
+				}*/
 				P = sbtData.pos;
 			}
 			else
@@ -235,7 +252,8 @@ ray_data.transmitted
 		ray_data.recursion_depth = 0;
 		ray_data.position = optixLaunchParams.pos;
 		ray_data.direction = rayDir;
-		//printf("rayDir: %f %f %f\n", rayDir.x, rayDir.y, rayDir.z);
+		printf("rayDir: %f %f %f\n", rayDir.x, rayDir.y, rayDir.z);
+		//kernels::dummyKernel << <1, 1 >> > ();
 		//printf("Distance Threshold: %f\n", optixLaunchParams.dist_thres);
 		//printf("Energy Threshold: %.10f\n", optixLaunchParams.energy_thres * energy_0);
 		while (ray_data.distance < optixLaunchParams.dist_thres && \

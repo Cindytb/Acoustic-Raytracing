@@ -1,13 +1,15 @@
 #include "audio.h"
 
 PaStream* stream;
-
+SndfileHandle ofile;
 void initializePA(int fs, osc::SampleRenderer* renderer) {
 	PaError err;
 	/*PortAudio setup*/
 	PaStreamParameters outputParams;
 	PaStreamParameters inputParams;
+	ofile = SndfileHandle("out.wav", SFM_WRITE, SF_FORMAT_WAV | SF_FORMAT_PCM_24, 2, fs);
 
+	
 	/* Initializing PortAudio */
 	err = Pa_Initialize();
 	if (err != paNoError) {
@@ -105,6 +107,7 @@ static int paCallback(const void* inputBuffer, void* outputBuffer,
 	float* output = (float*)outputBuffer;
 	float* input = (float*)inputBuffer;
 	renderer->get_sources()[0]->addBuffer(input, output, 0); // setting mic number to 0 for testing purposes
+	ofile.writef(output, FRAMES_PER_BUFFER);
 	// Sending input directly back to output
 	// stereo output is interleaved
 	/*for (unsigned i = 0; i < framesPerBuffer; i++) {

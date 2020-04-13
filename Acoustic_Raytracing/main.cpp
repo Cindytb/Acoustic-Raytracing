@@ -28,6 +28,7 @@ namespace osc
 		try
 		{
 			renderer->auralize();
+			renderer->get_sources()[0]->convolve_file("../../Ex_441_Mono.wav", "output.wav", 0);
 		}
 		catch (std::runtime_error& e)
 		{
@@ -103,8 +104,10 @@ namespace osc
 		renderer->add_source(src);
 		renderer->add_mic(mic);
 
-		//export_to_file(renderer);
-		HACK_auralize_loop(renderer);
+		export_to_file(renderer);
+		//auralize_loop(renderer);
+		//HACK_auralize_loop(renderer);
+
 		return 0;
 	}
 	
