@@ -58,12 +58,13 @@ namespace osc
 		TriangleMesh room;
 		room.color = vec3f(red, green, blue);
 		float width = 0.1f;
-		room.addCube(vec3f(0.f, -side_len / 2 - width / 2, 0.f), vec3f(side_len, width, side_len));
-		room.addCube(vec3f(0.f, side_len / 2 + width / 2, 0.f), vec3f(side_len, width, side_len));
-		room.addCube(vec3f(side_len / 2 + width / 2, 0, 0.f), vec3f(width, side_len, side_len));
-		room.addCube(vec3f(-side_len / 2 - width / 2, 0, 0.f), vec3f(width, side_len, side_len));
-		room.addCube(vec3f(0.f, 0, side_len / 2 + width / 2), vec3f(side_len, side_len, width));
-		room.addCube(vec3f(0.f, 0, -side_len / 2 - width / 2), vec3f(side_len, side_len, width));
+		room.addSphere(vec3f(0.0f, 0.0f, 0.0f), 10, 0);
+		// room.addCube(vec3f(0.f, -side_len / 2 - width / 2, 0.f), vec3f(side_len, width, side_len));
+		// room.addCube(vec3f(0.f, side_len / 2 + width / 2, 0.f), vec3f(side_len, width, side_len));
+		// room.addCube(vec3f(side_len / 2 + width / 2, 0, 0.f), vec3f(width, side_len, side_len));
+		// room.addCube(vec3f(-side_len / 2 - width / 2, 0, 0.f), vec3f(width, side_len, side_len));
+		// room.addCube(vec3f(0.f, 0, side_len / 2 + width / 2), vec3f(side_len, side_len, width));
+		// room.addCube(vec3f(0.f, 0, -side_len / 2 - width / 2), vec3f(side_len, side_len, width));
 		model.push_back(room);
 
 		// making a dummy "microphone"
