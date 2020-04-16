@@ -201,6 +201,13 @@ ray_data.transmitted
 	//------------------------------------------------------------------------------
 	extern "C" __global__ void __raygen__renderFrame()
 	{
+		if (optixLaunchParams.dummy_launch){
+			// Creating a dummy launch program to kick off and initialize OptiX
+			// The first time the program ran was the longest time it took to compute
+			// on the GPU. This dummy kernel launch will help make the first real launch
+			// 5-10 ms faster
+			return;
+		}
 		// compute a test pattern based on pixel ID
 		const int ix = optixGetLaunchIndex().x;
 		const int iy = optixGetLaunchIndex().y;

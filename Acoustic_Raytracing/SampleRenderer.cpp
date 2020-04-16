@@ -298,6 +298,13 @@ SampleRenderer::SampleRenderer(const std::vector<TriangleMesh> &meshes)
 	std::cout << GDT_TERMINAL_GREEN;
 	std::cout << "#osc: Optix 7 Sample fully set up" << std::endl;
 	std::cout << GDT_TERMINAL_DEFAULT;
+
+	std::cout << "Launching dummy kernel" << std::endl;
+	launchParams.frame.size.x = 1;
+
+	launchParams.dummy_launch = true;
+	render();
+	launchParams.dummy_launch = false;
 }
 
 OptixTraversableHandle SampleRenderer::buildAccel()
@@ -718,7 +725,7 @@ void SampleRenderer::render()
 							&sbt,
 							/*! dimensions of the launch: */
 							launchParams.frame.size.x,
-							launchParams.frame.size.y,
+							1, // launchParams.frame.size.y,
 							1));
 	// sync - make sure the frame is rendered before we download and
 	// display (obviously, for a high-performance application you

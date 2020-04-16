@@ -38,6 +38,7 @@ struct TriangleMeshSBTData
 
 struct LaunchParams
 {
+  bool dummy_launch = false;
   struct
   {
     uint32_t *colorBuffer;
