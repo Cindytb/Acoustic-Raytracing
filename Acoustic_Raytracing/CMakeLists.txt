@@ -19,7 +19,7 @@ include_directories(${OptiX_INCLUDE} ${PROJECT_SOURCE_DIR}/common/cuda_helpers $
 link_directories(${SNDFILE_INCLUDE_DIR} ${PORTAUDIO_INCLUDE_DIR})
 cuda_compile_and_embed(embedded_ptx_code devicePrograms.cu)
 
-cuda_add_executable(Acoustic_Raytracing
+cuda_add_executable(Acoustic_Raytracing.out
   audio.cpp
   audio.h
   kernels.cu
@@ -43,7 +43,7 @@ cuda_add_executable(Acoustic_Raytracing
   Bui/convolve.cu
   Bui/convolve.cuh
   )
-target_link_libraries(Acoustic_Raytracing
+target_link_libraries(Acoustic_Raytracing.out
   gdt
   # optix dependencies, for rendering
   ${optix_LIBRARY}
