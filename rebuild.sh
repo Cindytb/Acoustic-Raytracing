@@ -1,6 +1,7 @@
 #!/bin/bash
 
-cd ~/Acoustic-Raytracing/build
+mkdir -p build
+cd build
 rm -rf *
 cmake ..
 make
