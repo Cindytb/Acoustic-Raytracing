@@ -73,7 +73,6 @@ void SoundSource::trace()
 	local_histogram->dist_thres = dist_thres;
 	local_histogram->energy_thres = energy_thres;
 	local_histogram->c = c;
-	printf("num_rays: %i\n", num_rays);
 	checkCudaErrors(cudaMemcpy(d_local_histogram,
 		local_histogram,
 		sizeof(osc::LaunchParams),
@@ -108,13 +107,13 @@ void SoundSource::trace()
 
 	// Used to do precision benchmarking between this implmentation
 	// and pyroomacoustics
-	std::ofstream myfile;
-	myfile.open("histogram.dump");
+	// std::ofstream myfile;
+	// myfile.open("histogram.dump");
 
-	for (int i = 0; i < time_bins; i++) {
-		myfile << m_histogram[i * freq_bands] << std::endl;
-	}
-	myfile.close();
+	// for (int i = 0; i < time_bins; i++) {
+	// 	myfile << m_histogram[i * freq_bands] << std::endl;
+	// }
+	// myfile.close();
 }
 
 void SoundSource::compute_IRs()

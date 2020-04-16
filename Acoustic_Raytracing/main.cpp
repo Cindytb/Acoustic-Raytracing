@@ -80,9 +80,13 @@ namespace osc
 		Microphone* mic = new Microphone();
 		renderer->add_mic(mic);
 		renderer->add_source(src);
-		renderer->auralize();
+		std::cout << "Number of rays: " << SoundItem::num_rays << std::endl;
+		for(int i = 0; i < 1000; i++){
+			renderer->auralize();
+		}
+		
 
-		export_to_file(renderer);
+		// export_to_file(renderer);
 		return 0;
 	}
 	

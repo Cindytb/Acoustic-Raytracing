@@ -4,7 +4,7 @@
 
 int SoundItem::num_mics = 0;
 int SoundItem::num_src = 0;
-int SoundItem::fs = 44100;
+int SoundItem::fs = 48000;
 OptixShaderBindingTable SoundItem::sbt = {};
 OptixTraversableHandle SoundItem::traversable;
 OptixPipeline SoundItem::pipeline;
