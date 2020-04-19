@@ -2,6 +2,7 @@
 
 #include "SoundItem.h"
 
+int SoundItem::frames_per_buffer = FRAMES_PER_BUFFER;
 int SoundItem::num_mics = 0;
 int SoundItem::num_src = 0;
 int SoundItem::fs = 44100;

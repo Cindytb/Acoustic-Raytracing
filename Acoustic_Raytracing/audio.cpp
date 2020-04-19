@@ -2,7 +2,7 @@
 
 PaStream* stream;
 
-void initializePA(int fs, osc::SampleRenderer* renderer) {
+void initializePA(int fs, osc::OptixSetup* renderer) {
 	PaError err;
 	/*PortAudio setup*/
 	PaStreamParameters outputParams;
@@ -101,10 +101,17 @@ static int paCallback(const void* inputBuffer, void* outputBuffer,
 	void* userData)
 {
 	/* Cast data passed through stream to our structure. */
-	osc::SampleRenderer* renderer = (osc::SampleRenderer*)userData;
+	osc::OptixSetup* renderer = (osc::OptixSetup*)userData;
 	float* output = (float*)outputBuffer;
 	float* input = (float*)inputBuffer;
-	renderer->get_sources()[0]->addBuffer(input, output, 0); // setting mic number to 0 for testing purposes
+	renderer->get_microphones()[0]->attach_output(output);
+	renderer->get_sources()[0]->add_buffer(input);
+	
+	// For demo purposes, making it stereo
+	for (int i = framesPerBuffer - 1; i >= 0; i--) {
+			output[i * 2] = output[i];
+			output[i * 2 + 1] = output[i];
+		}
 	// Sending input directly back to output
 	// stereo output is interleaved
 	/*for (unsigned i = 0; i < framesPerBuffer; i++) {

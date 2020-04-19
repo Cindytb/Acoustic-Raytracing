@@ -6,7 +6,7 @@ namespace kernels {
 	int numThreads = 256;
 	void compute_irs_wrapper(float* d_histogram, float* d_ir, int hbss, size_t size_x, size_t size_y, cudaStream_t stream) {
 		int threads = 256;
-		int blocks = (hbss * size_x * size_y + threads - 1) / threads;
+		int blocks = (size_x + threads - 1) / threads;
 		compute_irs << < threads, blocks, 0, stream >> > (
 			d_histogram,
 			d_ir,
@@ -25,9 +25,10 @@ namespace kernels {
 		unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
 		// y = frequency band of histogram. 8 by default
 		unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-		// Hacky IR implementation that just takes the first band number
-		d_ir[x * hbss] = d_histogram[x * size_y];
+		if (x < size_x){
+			// Hacky IR implementation that just takes the first band number
+			d_ir[x * hbss] = d_histogram[x * size_y];
+		}
 	}
 
 

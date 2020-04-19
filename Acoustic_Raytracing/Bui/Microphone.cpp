@@ -11,24 +11,28 @@ Microphone::Microphone(gdt::vec3f pos)
     new (this) Microphone(pos, {0, 0, 0}, 256);
 }
 Microphone::Microphone(gdt::vec3f pos, gdt::vec3f orientation,
-                       int frames_per_buffer) : m_frames_per_buffer(frames_per_buffer)
+                       int frames_per_buffer)
 {
     m_position = pos;
     m_orientation = orientation;
-    m_output = new float[m_frames_per_buffer];
-    m_histogram = new float[time_bins * freq_bands];
+    SoundItem::frames_per_buffer = frames_per_buffer;
     num_mics++;
 }
 void Microphone::zero_output()
 {
-    for (int i = 0; i < m_frames_per_buffer; i++)
+    for (int i = 0; i < frames_per_buffer; i++)
     {
         m_output[i] = 0.0f;
     }
 }
 
-void Microphone::compute_ir(float *d_histogram, cudaStream_t stream)
-{
+float* Microphone::get_output(){
+    return m_output;
+}
+
+void Microphone::attach_output(float* output){
+    m_output = output;
+    zero_output();
 }
 Microphone::~Microphone()
 {

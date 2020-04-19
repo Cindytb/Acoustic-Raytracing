@@ -26,7 +26,7 @@ SoundSource::SoundSource(gdt::vec3f pos, gdt::vec3f orientation)
 {
 	m_position = pos;
 	m_orientation = orientation;
-	local_histogram = new osc::LaunchParams();
+	m_local_histogram = new osc::LaunchData();
 	num_src++;
 	int hist_bin_size_samples = fs * hist_bin_size;
 	hist_bin_size = hist_bin_size_samples / (float)fs;
@@ -36,29 +36,29 @@ SoundSource::SoundSource(gdt::vec3f pos, gdt::vec3f orientation)
 	checkCudaErrors(cudaStreamCreate(&m_stream));
 
 	/*An absolutely gigantic buffer of how much audio to store*/
-	buffer_size = next_pow_2(time_thres * fs + FRAMES_PER_BUFFER - 1);
-	buffered_input = new float[buffer_size];
+	m_buffer_size = next_pow_2(time_thres * fs + FRAMES_PER_BUFFER - 1);
+	m_buffered_input = new float[m_buffer_size];
 #pragma omp parallel for
-	for (size_t i = 0; i < buffer_size; i++)
+	for (size_t i = 0; i < m_buffer_size; i++)
 	{
-		buffered_input[i] = 0.0f;
+		m_buffered_input[i] = 0.0f;
 	}
-	checkCudaErrors(cudaMalloc(&d_buffered_input, (buffer_size + 2) * sizeof(float)));
+	checkCudaErrors(cudaMalloc(&d_buffered_input, (m_buffer_size + 2) * sizeof(float)));
 	scene_change = false;
 
 	checkCudaErrors(
-		cudaMalloc(&local_histogram->d_histogram,
+		cudaMalloc(&m_local_histogram->d_histogram,
 			MAX_NUM_MICS * time_bins * freq_bands * sizeof(float)));
-	checkCudaErrors(cudaMalloc(&local_histogram->d_transmitted,
+	checkCudaErrors(cudaMalloc(&m_local_histogram->d_transmitted,
 		freq_bands * num_rays * sizeof(float)));
 	DEBUG_CHECK();
 	checkCudaErrors(
-		cudaMalloc((void**)&d_local_histogram, sizeof(osc::LaunchParams)));
-	kernels::fillWithZeroesKernel(local_histogram->d_histogram,
+		cudaMalloc((void**)&d_local_histogram, sizeof(osc::LaunchData)));
+	kernels::fillWithZeroesKernel(m_local_histogram->d_histogram,
 		MAX_NUM_MICS * time_bins * freq_bands,
 		m_stream);
 	kernels::fillWithZeroesKernel(
-		local_histogram->d_transmitted, freq_bands * num_rays, m_stream);
+		m_local_histogram->d_transmitted, freq_bands * num_rays, m_stream);
 }
 
 void SoundSource::add_mic(Microphone& mic)
@@ -66,32 +66,36 @@ void SoundSource::add_mic(Microphone& mic)
 	m_microphones.push_back(mic);
 	m_histogram.push_back(new float[time_bins * freq_bands]);
 	m_irs.push_back(new float[(size_t)(time_thres * fs)]);
-	float* d_buf;
-	checkCudaErrors(cudaMalloc(&d_buf, (buffer_size + 2) * sizeof(float)));
-	m_d_irs.push_back(d_buf);
+	m_summing_bus.push_back(new float[frames_per_buffer]);
+	float* d_ir, *d_conv;
+	checkCudaErrors(cudaMalloc(&d_ir, (m_buffer_size + 2) * sizeof(float)));
+	checkCudaErrors(cudaMalloc(&d_conv, (m_buffer_size + 2) * sizeof(float)));
+	d_irs.push_back(d_ir);
+	d_conv_bufs.push_back(d_conv);
 #pragma omp parallel for
 	for (int i = 0; i < (size_t)(time_thres * fs); i++)
 	{
 		m_irs[m_microphones.size() - 1][i] = 0.0f;
 	}
-	kernels::fillWithZeroesKernel(d_buf, buffer_size + 2, m_stream);
+	kernels::fillWithZeroesKernel(d_ir, m_buffer_size + 2, m_stream);
+	kernels::fillWithZeroesKernel(d_conv, m_buffer_size + 2, m_stream);
 }
 
 void SoundSource::trace()
 {
-	local_histogram->freq_bands = freq_bands;
-	local_histogram->pos = m_position;
-	local_histogram->orientation = m_orientation;
-	local_histogram->traversable = traversable;
-	local_histogram->time_bins = time_bins;
-	local_histogram->hist_bin_size = hist_bin_size;
-	local_histogram->dist_thres = dist_thres;
-	local_histogram->energy_thres = energy_thres;
-	local_histogram->c = c;
+	m_local_histogram->freq_bands = freq_bands;
+	m_local_histogram->pos = m_position;
+	m_local_histogram->orientation = m_orientation;
+	m_local_histogram->traversable = traversable;
+	m_local_histogram->time_bins = time_bins;
+	m_local_histogram->hist_bin_size = hist_bin_size;
+	m_local_histogram->dist_thres = dist_thres;
+	m_local_histogram->energy_thres = energy_thres;
+	m_local_histogram->c = c;
 	printf("num_rays: %i\n", num_rays);
 	checkCudaErrors(cudaMemcpy(d_local_histogram,
-		local_histogram,
-		sizeof(osc::LaunchParams),
+		m_local_histogram,
+		sizeof(osc::LaunchData),
 		cudaMemcpyHostToDevice));
 
 	auto start = std::chrono::high_resolution_clock::now();
@@ -100,7 +104,7 @@ void SoundSource::trace()
 		m_stream,
 		/*! parameters and SBT */
 		(CUdeviceptr)d_local_histogram,
-		sizeof(osc::LaunchParams),
+		sizeof(osc::LaunchData),
 		&sbt,
 		/*! dimensions of the launch: */
 		num_rays,
@@ -112,16 +116,16 @@ void SoundSource::trace()
 
 	std::cout << "Time taken by GPU function: "
 		<< duration.count() << " microseconds" << std::endl;
-	// for (int i = 0; i < num_mics; i++)
-	// {
-	// 	checkCudaErrors(cudaMemcpyAsync(m_histogram[i],
-	// 									local_histogram->d_histogram + i * time_bins * freq_bands,
-	// 									time_bins * freq_bands * sizeof(float),
-	// 									cudaMemcpyDeviceToHost,
-	// 									m_stream));
-	// }
+	for (int i = 0; i < num_mics; i++)
+	{
+		checkCudaErrors(cudaMemcpyAsync(m_histogram[i],
+										m_local_histogram->d_histogram + i * time_bins * freq_bands,
+										time_bins * freq_bands * sizeof(float),
+										cudaMemcpyDeviceToHost,
+										m_stream));
+	}
 
-	// DEBUG_CHECK();
+	DEBUG_CHECK();
 
 	// Used to do precision benchmarking between this implmentation
 	// and pyroomacoustics
@@ -137,18 +141,19 @@ void SoundSource::trace()
 
 void SoundSource::compute_IRs()
 {
+	std::cout<< "computing IRS" << std::endl;
 	int max_ir_length = (int)time_thres * fs;
 	int hist_bin_size_samples = SoundItem::fs * hist_bin_size;
 	for (int i = 0; i < num_mics; i++)
 	{
-		kernels::compute_irs_wrapper(local_histogram->d_histogram + i * time_bins * freq_bands,
-			m_d_irs[i],
+		
+		kernels::compute_irs_wrapper(m_local_histogram->d_histogram + i * time_bins * freq_bands,
+			d_irs[i],
 			hist_bin_size_samples,
 			time_bins,
 			freq_bands,
 			m_stream);
 	}
-	DEBUG_CHECK();
 	checkCudaErrors(cudaStreamSynchronize(m_stream));
 
 #pragma omp parallel for
@@ -170,57 +175,44 @@ void SoundSource::compute_IRs()
 	myfile.close();*/
 }
 
-void SoundSource::convolve()
-{
-}
-void SoundSource::HACK_upload_ir(std::string input_file) {
-	SndfileHandle ifile;
-	ifile = SndfileHandle(input_file);
-	if (ifile.channels() != 1)
-	{
-		printf("ERROR: only mono files allowed in this function\n");
-		exit(EXIT_FAILURE);
-	}
-	if (ifile.samplerate() != fs)
-	{
-		printf("ERROR: Wrong sample rate\n");
-		exit(EXIT_FAILURE);
-	}
 
-	ifile.readf(m_irs[0], ifile.frames());
-	checkCudaErrors(cudaMemcpy(m_d_irs[0], m_irs[0], ifile.frames() * sizeof(float), cudaMemcpyHostToDevice));
-	cufft::forward_fft_wrapper(m_d_irs[0], buffer_size);
-}
-void SoundSource::addBuffer(float* input, float* output, int mic_no)
+void SoundSource::add_buffer(float* input)
 {
 	/*Copy into current buffer into x */
 	memcpy(
-		buffered_input + (buffer_size - FRAMES_PER_BUFFER), /*Go to the end and work backwards*/
+		m_buffered_input + (m_buffer_size - frames_per_buffer), /*Go to the end and work backwards*/
 		input,
-		FRAMES_PER_BUFFER * sizeof(float));
-	checkCudaErrors(cudaMemcpy(d_buffered_input, buffered_input, buffer_size * sizeof(float), cudaMemcpyHostToDevice));
-	cufft::forward_fft_wrapper(d_buffered_input, buffer_size);
+		frames_per_buffer * sizeof(float));
+	checkCudaErrors(cudaMemcpy(d_buffered_input, m_buffered_input, m_buffer_size * sizeof(float), cudaMemcpyHostToDevice));
+	cufft::forward_fft_wrapper(d_buffered_input, m_buffer_size);
 	if (scene_change)
 	{
 		trace();
 		compute_IRs();
 		for (int i = 0; i < num_mics; i++) {
-			cufft::forward_fft_wrapper(m_d_irs[i], buffer_size);
+			cufft::forward_fft_wrapper(d_irs[i], m_buffer_size);
 		}
 		scene_change = false;
 	}
-	cufft::convolve_ifft_wrapper((cufftComplex*)d_buffered_input, (cufftComplex*)m_d_irs[mic_no], buffer_size);
-	cufft::normalize_fft(d_buffered_input, buffer_size);
-	checkCudaErrors(cudaMemcpy(output, d_buffered_input + buffer_size - FRAMES_PER_BUFFER, FRAMES_PER_BUFFER * sizeof(float), cudaMemcpyDeviceToHost));
-	for (int i = FRAMES_PER_BUFFER - 1; i >= 0; i--) {
-		output[i * 2] = output[i];
-		output[i * 2 + 1] = output[i];
+	for(int i = 0; i < num_mics; i++){
+		cufft::convolve_ifft_wrapper((cufftComplex*)d_buffered_input, (cufftComplex*)d_irs[i], (cufftComplex*)d_conv_bufs[i], m_buffer_size);
+		cufft::normalize_fft(d_conv_bufs[i], m_buffer_size);
+		checkCudaErrors(cudaMemcpyAsync(m_summing_bus[i], 
+			d_conv_bufs[i] + m_buffer_size - frames_per_buffer, 
+			frames_per_buffer * sizeof(float), 
+			cudaMemcpyDeviceToHost, 
+			m_stream));
+		float* output = m_microphones[i].get_output();
+		// TODO: Turn this into an atomic addition to prevent data races
+		for(int j = 0; i < frames_per_buffer; j++){
+			output[j] += m_summing_bus[i][j];
+		}
 	}
 	/*Overlap-save*/
 	memmove(
-		buffered_input,
-		buffered_input + FRAMES_PER_BUFFER,
-		sizeof(float) * (buffer_size - FRAMES_PER_BUFFER));
+		m_buffered_input,
+		m_buffered_input + frames_per_buffer,
+		sizeof(float) * (m_buffer_size - frames_per_buffer));
 }
 
 
@@ -343,13 +335,33 @@ void SoundSource::convolve_file(std::string input_file,
 SoundSource::~SoundSource()
 {
 	num_src--;
-	delete[] buffered_input;
-	checkCudaErrors(cudaFree(local_histogram->d_histogram));
+	delete[] m_buffered_input;
+	checkCudaErrors(cudaFree(m_local_histogram->d_histogram));
 	for (int i = 0; i < num_mics; i++)
 	{
 		delete[] m_histogram[i];
 		delete[] m_irs[i];
+		checkCudaErrors(cudaFree(d_conv_bufs[i]));
+		checkCudaErrors(cudaFree(d_irs[i]));
 	}
-	checkCudaErrors(cudaFree(local_histogram->d_transmitted));
+	checkCudaErrors(cudaFree(m_local_histogram->d_transmitted));
 	checkCudaErrors(cudaFree(d_local_histogram));
+}
+void SoundSource::HACK_upload_ir(std::string input_file) {
+	SndfileHandle ifile;
+	ifile = SndfileHandle(input_file);
+	if (ifile.channels() != 1)
+	{
+		printf("ERROR: only mono files allowed in this function\n");
+		exit(EXIT_FAILURE);
+	}
+	if (ifile.samplerate() != fs)
+	{
+		printf("ERROR: Wrong sample rate\n");
+		exit(EXIT_FAILURE);
+	}
+
+	ifile.readf(m_irs[0], ifile.frames());
+	checkCudaErrors(cudaMemcpy(d_irs[0], m_irs[0], ifile.frames() * sizeof(float), cudaMemcpyHostToDevice));
+	cufft::forward_fft_wrapper(d_irs[0], m_buffer_size);
 }

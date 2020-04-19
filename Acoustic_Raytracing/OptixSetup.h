@@ -60,7 +60,7 @@ namespace osc {
 			context, module, programs, pipeline, SBT, etc, and perform a
 			valid launch that renders some pixel (using a simple test
 			pattern, in this case */
-	class SampleRenderer
+	class OptixSetup
 	{
 		// ------------------------------------------------------------------
 		// publicly accessible interface
@@ -68,7 +68,7 @@ namespace osc {
 	public:
 		/*! constructor - performs all setup, including initializing
 			optix, creates module, pipeline, programs, SBT, etc. */
-		SampleRenderer(const std::vector<TriangleMesh> &meshes);
+		OptixSetup(const std::vector<TriangleMesh> &meshes);
 
 		/*! render one frame */
 		void render();
@@ -87,6 +87,7 @@ namespace osc {
 		void add_source(SoundSource *src);
 		
 		std::vector<SoundSource*> get_sources();
+		std::vector<Microphone*> get_microphones();
 	protected:
 		// ------------------------------------------------------------------
 		// internal helper functions
@@ -156,7 +157,7 @@ namespace osc {
 
 		/*! @{ our launch parameters, on the host, and the buffer to store
 				them on the device */
-		LaunchParams launchParams;
+		LaunchData launchParams;
 		CUDABuffer   launchParamsBuffer;
 		/*! @} */
 

@@ -14,7 +14,7 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "SampleRenderer.h"
+#include "OptixSetup.h"
 #include "audio.h"
 
 #include <chrono>
@@ -24,10 +24,12 @@
 /*! \namespace osc - Optix Siggraph Course */
 namespace osc
 {
-	void export_to_file(SampleRenderer* renderer) {
+	void export_to_file(OptixSetup* renderer) {
 		try
 		{
 			renderer->auralize();
+			renderer->get_sources()[0]->compute_IRs();
+			renderer->get_sources()[0]->convolve_file("../Ex_441_mono.wav", "output.wav", 0);
 		}
 		catch (std::runtime_error& e)
 		{
@@ -36,7 +38,7 @@ namespace osc
 			exit(1);
 		}
 	}
-	void HACK_auralize_loop(SampleRenderer* renderer) {
+	void HACK_auralize_loop(OptixSetup* renderer) {
 		
 		renderer->get_sources()[0]->HACK_upload_ir("../../reverb_mono_441.wav");
 		initializePA(SoundItem::fs, renderer);
@@ -47,7 +49,7 @@ namespace osc
 			q = getchar();
 		}
 	}
-	void auralize_loop(SampleRenderer* renderer) {
+	void auralize_loop(OptixSetup* renderer) {
 		try
 		{
 			renderer->auralize();
@@ -70,7 +72,7 @@ namespace osc
 			world, then exit */
 	extern "C" int main(int ac, char** av)
 	{
-		std::vector<TriangleMesh> model;
+		std::vector<TriangleMesh> scene;
 		float red = 193.0f / 256.0f;
 		float green = 215.0f / 256.0f;
 		float blue = 229.0f / 256.0f;
@@ -86,25 +88,28 @@ namespace osc
 		room.addCube(vec3f(-side_len / 2 - width / 2, 0, 0.f), vec3f(width, side_len, side_len));
 		room.addCube(vec3f(0.f, 0, side_len / 2 + width / 2), vec3f(side_len, side_len, width));
 		room.addCube(vec3f(0.f, 0, -side_len / 2 - width / 2), vec3f(side_len, side_len, width));
-		model.push_back(room);
+		scene.push_back(room);
 
 		// making a dummy "microphone"
 		TriangleMesh micMesh;
 		micMesh.color = vec3f(0.f, 1.f, 1.f);
 		micMesh.addSphere(vec3f(1.f, 0.f, 0.f), 0.5f, 6);
-		model.push_back(micMesh);
+		scene.push_back(micMesh);
 		if (ac > 1)
 		{
 			SoundItem::num_rays = atoi(av[1]);
 		}
-		SampleRenderer* renderer = new SampleRenderer(model);
+		std::cout << scene.size() << std::endl;
+		OptixSetup* renderer = new OptixSetup(scene);
 		SoundSource* src = new SoundSource();
 		Microphone* mic = new Microphone();
 		renderer->add_source(src);
 		renderer->add_mic(mic);
 
-		//export_to_file(renderer);
-		HACK_auralize_loop(renderer);
+		// renderer->auralize();
+		export_to_file(renderer);
+		// auralize_loop(renderer);
+		// HACK_auralize_loop(renderer);
 		return 0;
 	}
 	

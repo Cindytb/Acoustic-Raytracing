@@ -14,7 +14,7 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "SampleRenderer.h"
+#include "OptixSetup.h"
 // this include may only appear in a single source file:
 #include <optix_function_table_definition.h>
 
@@ -251,7 +251,7 @@ int TriangleMesh::getMiddlePoint(int p1, int p2)
 
 /*! constructor - performs all setup, including initializing
 		optix, creates module, pipeline, programs, SBT, etc. */
-SampleRenderer::SampleRenderer(const std::vector<TriangleMesh> &meshes)
+OptixSetup::OptixSetup(const std::vector<TriangleMesh> &meshes)
 	: meshes(meshes)
 {
 	initOptix();
@@ -269,19 +269,21 @@ SampleRenderer::SampleRenderer(const std::vector<TriangleMesh> &meshes)
 	std::cout << "#osc: creating hitgroup programs ..." << std::endl;
 	createHitgroupPrograms();
 
-	launchParams.traversable = buildAccel();
-	launchParams.time_bins = 2500;
-	launchParams.freq_bands = 9;
-	//launchParams.hist_res = 192;
-	unsigned long long STRIDE = launchParams.time_bins * launchParams.freq_bands;
-	unsigned long long STRIDE_POW_2 = next_pow_2(STRIDE);
-	unsigned long long MAX_MICS = 10;
-	unsigned long long N_RAYS = 1024;
-	checkCudaErrors(cudaMalloc(&(launchParams.d_histogram), STRIDE * MAX_MICS * sizeof(float)));
-	checkCudaErrors(cudaMalloc(&(launchParams.d_transmitted), launchParams.freq_bands * N_RAYS * sizeof(float)));
-	kernels::fillWithZeroesKernel(launchParams.d_histogram, STRIDE * MAX_MICS);
-	kernels::fillWithZeroesKernel(launchParams.d_transmitted, launchParams.freq_bands * MAX_MICS);
-	DEBUG_CHECK();
+	std::cout << "#osc: building acceleration structure ..." << std::endl;
+	SoundItem::traversable = buildAccel();
+	// launchParams.traversable = buildAccel();
+	// launchParams.time_bins = 2500;
+	// launchParams.freq_bands = 9;
+	// //launchParams.hist_res = 192;
+	// unsigned long long STRIDE = launchParams.time_bins * launchParams.freq_bands;
+	// unsigned long long STRIDE_POW_2 = next_pow_2(STRIDE);
+	// unsigned long long MAX_MICS = 10;
+	// unsigned long long N_RAYS = 1024;
+	// checkCudaErrors(cudaMalloc(&(launchParams.d_histogram), STRIDE * MAX_MICS * sizeof(float)));
+	// checkCudaErrors(cudaMalloc(&(launchParams.d_transmitted), launchParams.freq_bands * N_RAYS * sizeof(float)));
+	// kernels::fillWithZeroesKernel(launchParams.d_histogram, STRIDE * MAX_MICS);
+	// kernels::fillWithZeroesKernel(launchParams.d_transmitted, launchParams.freq_bands * MAX_MICS);
+	// DEBUG_CHECK();
 	std::cout << "#osc: setting up optix pipeline ..." << std::endl;
 	createPipeline();
 	SoundItem::pipeline = pipeline;
@@ -290,7 +292,6 @@ SampleRenderer::SampleRenderer(const std::vector<TriangleMesh> &meshes)
 	buildSBT();
 
 	SoundItem::sbt = sbt;
-	SoundItem::traversable = launchParams.traversable;
 
 	launchParamsBuffer.alloc(sizeof(launchParams));
 	std::cout << "#osc: context, module, pipeline, etc, all set up ..." << std::endl;
@@ -307,7 +308,7 @@ SampleRenderer::SampleRenderer(const std::vector<TriangleMesh> &meshes)
 	launchParams.dummy_launch = false;
 }
 
-OptixTraversableHandle SampleRenderer::buildAccel()
+OptixTraversableHandle OptixSetup::buildAccel()
 {
 	// meshes.resize(1);
 
@@ -438,7 +439,7 @@ OptixTraversableHandle SampleRenderer::buildAccel()
 }
 
 /*! helper function that initializes optix and checks for errors */
-void SampleRenderer::initOptix()
+void OptixSetup::initOptix()
 {
 	std::cout << "#osc: initializing optix..." << std::endl;
 
@@ -471,7 +472,7 @@ static void context_log_cb(unsigned int level,
 
 /*! creates and configures a optix device context (in this simple
 		example, only for the primary GPU device) */
-void SampleRenderer::createContext()
+void OptixSetup::createContext()
 {
 	// for this sample, do everything on one device
 	const int deviceID = 0;
@@ -492,7 +493,7 @@ void SampleRenderer::createContext()
 /*! creates the module that contains all the programs we are going
 		to use. in this simple example, we use a single module from a
 		single .cu file, using a single embedded ptx string */
-void SampleRenderer::createModule()
+void OptixSetup::createModule()
 {
 	moduleCompileOptions.maxRegisterCount = 50;
 	moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
@@ -526,7 +527,7 @@ void SampleRenderer::createModule()
 }
 
 /*! does all setup for the raygen program(s) we are going to use */
-void SampleRenderer::createRaygenPrograms()
+void OptixSetup::createRaygenPrograms()
 {
 	// we do a single ray gen program in this example:
 	raygenPGs.resize(1);
@@ -551,7 +552,7 @@ void SampleRenderer::createRaygenPrograms()
 }
 
 /*! does all setup for the miss program(s) we are going to use */
-void SampleRenderer::createMissPrograms()
+void OptixSetup::createMissPrograms()
 {
 	// we do a single ray gen program in this example:
 	missPGs.resize(1);
@@ -576,7 +577,7 @@ void SampleRenderer::createMissPrograms()
 }
 
 /*! does all setup for the hitgroup program(s) we are going to use */
-void SampleRenderer::createHitgroupPrograms()
+void OptixSetup::createHitgroupPrograms()
 {
 	// for this simple example, we set up a single hit group
 	hitgroupPGs.resize(1);
@@ -605,7 +606,7 @@ void SampleRenderer::createHitgroupPrograms()
 }
 
 /*! assembles the full pipeline of all programs */
-void SampleRenderer::createPipeline()
+void OptixSetup::createPipeline()
 {
 	std::vector<OptixProgramGroup> programGroups;
 	for (auto pg : raygenPGs)
@@ -645,7 +646,7 @@ void SampleRenderer::createPipeline()
 }
 
 /*! constructs the shader binding table */
-void SampleRenderer::buildSBT()
+void OptixSetup::buildSBT()
 {
 	// ------------------------------------------------------------------
 	// build raygen records
@@ -705,7 +706,7 @@ void SampleRenderer::buildSBT()
 }
 
 /*! render one frame */
-void SampleRenderer::render()
+void OptixSetup::render()
 {
 	// sanity check: make sure we launch only after first resize is
 	// already done:
@@ -736,7 +737,7 @@ void SampleRenderer::render()
 }
 
 /*! set camera to render with */
-void SampleRenderer::setCamera(const Camera &camera)
+void OptixSetup::setCamera(const Camera &camera)
 {
 	lastSetCamera = camera;
 	launchParams.camera.position = camera.from;
@@ -749,7 +750,7 @@ void SampleRenderer::setCamera(const Camera &camera)
 }
 
 /*! resize frame buffer to given resolution */
-void SampleRenderer::resize(const vec2i &newSize)
+void OptixSetup::resize(const vec2i &newSize)
 {
 	// resize our cuda frame buffer
 	colorBuffer.resize(newSize.x * newSize.y * sizeof(uint32_t));
@@ -764,28 +765,30 @@ void SampleRenderer::resize(const vec2i &newSize)
 }
 
 /*! download the rendered color buffer */
-void SampleRenderer::downloadPixels(uint32_t h_pixels[])
+void OptixSetup::downloadPixels(uint32_t h_pixels[])
 {
 	colorBuffer.download(h_pixels,
 						 launchParams.frame.size.x * launchParams.frame.size.y);
 }
 
-void SampleRenderer::add_mic(Microphone *mic)
+void OptixSetup::add_mic(Microphone *mic)
 {
 	m_mics.push_back(mic);
 	for (int i = 0; i < m_sources.size(); i++) {
 		m_sources[i]->add_mic(*mic);
 	}
 }
-void SampleRenderer::add_source(SoundSource *src)
+void OptixSetup::add_source(SoundSource *src)
 {
 	m_sources.push_back(src);
 }
-std::vector<SoundSource*> SampleRenderer::get_sources(){
+std::vector<SoundSource*> OptixSetup::get_sources(){
 	return m_sources;
 }
-
-void SampleRenderer::auralize()
+std::vector<Microphone*> OptixSetup::get_microphones(){
+	return m_mics;
+}
+void OptixSetup::auralize()
 {
 	for (int i = 0; i < m_sources.size(); i++)
 	{

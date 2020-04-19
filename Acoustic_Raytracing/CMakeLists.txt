@@ -32,8 +32,8 @@ cuda_add_executable(Acoustic_Raytracing.out
   LaunchParams.h
   main.cpp
   prd.h
-  SampleRenderer.h
-  SampleRenderer.cpp
+  OptixSetup.h
+  OptixSetup.cpp
   Bui/Microphone.h
   Bui/Microphone.cpp
   Bui/SoundItem.h

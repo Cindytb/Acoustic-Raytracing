@@ -30,6 +30,7 @@ namespace cufft {
     void forward_fft_wrapper(float* d_input, size_t padded_size);
 	void inverse_fft_wrapper(float* d_input, size_t padded_size);
     void convolve_ifft_wrapper(cufftComplex* d_ibuf, cufftComplex* d_rbuf, size_t padded_size);
+    void convolve_ifft_wrapper(cufftComplex* d_ibuf, cufftComplex* d_rbuf, cufftComplex* d_obuf, size_t padded_size);
 // cuFFT API errors
 #ifndef CHECK_CUFFT_ERRORS
 #define CHECK_CUFFT_ERRORS(call) { \

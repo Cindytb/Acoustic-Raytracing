@@ -28,7 +28,7 @@ namespace osc
 	/*! launch parameters in constant memory, filled in by optix upon
 				optixLaunch (this gets filled in from the buffer we pass to
 				optixLaunch) */
-	extern "C" __constant__ LaunchParams optixLaunchParams;
+	extern "C" __constant__ LaunchData optixLaunchParams;
 	//extern "C" __constant__ bui::LaunchParams launchData;
 
 	// for this simple example, we have a single ray type

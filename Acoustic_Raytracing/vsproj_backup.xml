@@ -265,8 +265,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="..\..\example06_multipleObjects\LaunchParams.h" />
     <ClInclude Include="D:\School\College\GradSchool\ThesisStuff\OptiX\optix7course\example06_multipleObjects\optix7.h" />
     <ClInclude Include="D:\School\College\GradSchool\ThesisStuff\OptiX\optix7course\example06_multipleObjects\CUDABuffer.h" />
-    <ClInclude Include="D:\School\College\GradSchool\ThesisStuff\OptiX\optix7course\example06_multipleObjects\SampleRenderer.h" />
-    <ClCompile Include="D:\School\College\GradSchool\ThesisStuff\OptiX\optix7course\example06_multipleObjects\SampleRenderer.cpp" />
+    <ClInclude Include="D:\School\College\GradSchool\ThesisStuff\OptiX\optix7course\example06_multipleObjects\OptixSetup.h" />
+    <ClCompile Include="D:\School\College\GradSchool\ThesisStuff\OptiX\optix7course\example06_multipleObjects\OptixSetup.cpp" />
     <ClCompile Include="D:\School\College\GradSchool\ThesisStuff\OptiX\optix7course\example06_multipleObjects\main.cpp" />
     <ClInclude Include="D:\School\College\GradSchool\ThesisStuff\OptiX\optix7course\example06_multipleObjects\Bui\Microphone.h" />
     <ClCompile Include="D:\School\College\GradSchool\ThesisStuff\OptiX\optix7course\example06_multipleObjects\Bui\Microphone.cpp" />

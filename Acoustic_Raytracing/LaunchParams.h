@@ -36,7 +36,7 @@ struct TriangleMeshSBTData
   vec3f orientation;
 };
 
-struct LaunchParams
+struct LaunchData
 {
   bool dummy_launch = false;
   struct

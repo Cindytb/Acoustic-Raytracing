@@ -8,11 +8,12 @@
 #include <cuda_runtime.h>
 #include <optix.h>
 #include "gdt/math/vec.h"
+#include "constants.h"
 
 class SoundItem
 {
 public:
-    static int num_mics, num_src, fs;
+    static int num_mics, num_src, fs, frames_per_buffer;
     static OptixShaderBindingTable sbt;
 	static OptixTraversableHandle traversable;
 	static OptixPipeline pipeline;

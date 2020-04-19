@@ -47,21 +47,29 @@ public:
 	void convolve_file(std::string input_file,
 		std::string output_file,
 		int mic_no);
-	void addBuffer(float *input, float* output, int mic_no);
+	void add_buffer(float *input);
 	void HACK_upload_ir(std::string input_file);
 private:
-	osc::LaunchParams* local_histogram;
-	float* output;
-	float* buffered_input;
+	/* Launch data, host & device*/
+	osc::LaunchData* m_local_histogram;
+	osc::LaunchData* d_local_histogram;
+	
+	/* Rolling input for realtime convolution*/
+	float* m_buffered_input;
 	float* d_buffered_input;
-	size_t buffer_size;
-	osc::LaunchParams* d_local_histogram;
+	size_t m_buffer_size;
+
+	/* Individual microphone data*/
+	std::vector<Microphone> m_microphones;
 	std::vector<float*> m_histogram;
 	std::vector<float*> m_irs;
-	std::vector<float*> m_d_irs;
-	int m_ir_nonzero_length;
-	std::vector<Microphone> m_microphones;
+	std::vector<float*> d_irs;
+	std::vector<float*> d_conv_bufs;
+	std::vector<float*> m_summing_bus;
+
 	cudaStream_t m_stream;
-	SndfileHandle* file;
 	bool scene_change;
+
+	/* Future: moving away from a histogram*/
+	float* d_transfer_function;
 };

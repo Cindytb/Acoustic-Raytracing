@@ -2,7 +2,7 @@
 #ifndef _AUDIO_H_
 #define _AUDIO_H_
 
-#include "SampleRenderer.h"
+#include "OptixSetup.h"
 #include "Bui/constants.h"
 
 #include <portaudio.h>
@@ -16,7 +16,7 @@ static int paCallback(const void* inputBuffer, void* outputBuffer,
   const PaStreamCallbackTimeInfo* timeInfo,
   PaStreamCallbackFlags statusFlags,
   void* userData);
-void initializePA(int fs, osc::SampleRenderer* renderer);
+void initializePA(int fs, osc::OptixSetup* renderer);
 void closePA();
 
 

@@ -2,26 +2,37 @@
 namespace cufft {
 	// Define the device pointer to the callback routine. The host code will fetch this and pass it to CUFFT
 	// Complex multiplication
-	__device__ __host__ inline Complex ComplexMul(Complex a, Complex b) {
+	__device__ __host__ inline Complex ComplexMulInPlace(Complex a, Complex b) {
 		Complex c;
 		c.x = a.x * b.x - a.y * b.y;
 		c.y = a.x * b.y + a.y * b.x;
 		return c;
 	}
-
+	__device__ __host__ inline Complex ComplexMulOutPlace(Complex a, Complex b, Complex &c) {
+		c.x = a.x * b.x - a.y * b.y;
+		c.y = a.x * b.y + a.y * b.x;
+	}
 	// Complex pointwise multiplication
-	__global__ void ComplexPointwiseMul(Complex* a, const Complex* b, int size) {
+	__global__ void ComplexPointwiseMulInPlace(Complex* a, const Complex* b, int size) {
 		const int numThreads = blockDim.x * gridDim.x;
 		const int threadID = blockIdx.x * blockDim.x + threadIdx.x;
 		for (int i = threadID; i < size; i += numThreads) {
-			a[i] = ComplexMul(a[i], b[i]);
+			a[i] = ComplexMulInPlace(a[i], b[i]);
+		}
+	}
+	__global__ void ComplexPointwiseMulOutPlace(const Complex* a, const Complex* b, Complex* c, int size) {
+		const int numThreads = blockDim.x * gridDim.x;
+		const int threadID = blockIdx.x * blockDim.x + threadIdx.x;
+		for (int i = threadID; i < size; i += numThreads) {
+			ComplexMulOutPlace(a[i], b[i], c[i]);
 		}
 	}
 	// This is the callback routine. It does complex pointwise multiplication with scaling.
 	__device__ cufftComplex cbComplexPointwiseMul(void* dataIn, size_t offset, void* cb_info, void* sharedmem) {
 		cufftComplex* filter = (cufftComplex*)cb_info;
-		return (cufftComplex)ComplexMul(((Complex*)dataIn)[offset], filter[offset]);
+		return (cufftComplex)ComplexMulInPlace(((Complex*)dataIn)[offset], filter[offset]);
 	}
+	
 
 #ifndef WIN64
 	__device__ cufftCallbackLoadC myOwnCallbackPtr = cbComplexPointwiseMul;
@@ -49,8 +60,8 @@ namespace cufft {
 		int blockSize = 256;
 		int numBlocks = (paddedSize + blockSize - 1) / blockSize;
 
-		ComplexPointwiseMul << < numBlocks, blockSize >> > ((cufftComplex*)d_ibuf, (cufftComplex*)d_rbuf, paddedSize / 2 + 1);
-		getLastCudaError("Kernel execution failed [ ComplexPointwiseMul]");
+		ComplexPointwiseMulInPlace << < numBlocks, blockSize >> > ((cufftComplex*)d_ibuf, (cufftComplex*)d_rbuf, paddedSize / 2 + 1);
+		getLastCudaError("Kernel execution failed [ ComplexPointwiseMulInPlace]");
 		checkCudaErrors(cudaDeviceSynchronize());
 #else
 		/*Copy over the host copy of callback function*/
@@ -134,8 +145,8 @@ namespace cufft {
 		int blockSize = 256;
 		int numBlocks = (padded_size + blockSize - 1) / blockSize;
 
-		ComplexPointwiseMul << < numBlocks, blockSize >> > ((cufftComplex*)d_ibuf, (cufftComplex*)d_rbuf, padded_size / 2 + 1);
-		getLastCudaError("Kernel execution failed [ ComplexPointwiseMul]");
+		ComplexPointwiseMulInPlace << < numBlocks, blockSize >> > (d_ibuf, d_rbuf, padded_size / 2 + 1);
+		getLastCudaError("Kernel execution failed [ ComplexPointwiseMulInPlace]");
 		checkCudaErrors(cudaDeviceSynchronize());
 #else
 		/*Copy over the host copy of callback function*/
@@ -149,6 +160,22 @@ namespace cufft {
 
 #endif
 		CHECK_CUFFT_ERRORS(cufftExecC2R(outplan, (cufftComplex*)d_ibuf, (cufftReal*)d_ibuf));
+		checkCudaErrors(cufftDestroy(outplan));
+	}
+	void convolve_ifft_wrapper(cufftComplex* d_ibuf, cufftComplex* d_rbuf, cufftComplex* d_obuf, size_t padded_size){
+		/*Create inverse FFT plan*/
+		cufftHandle outplan;
+		CHECK_CUFFT_ERRORS(cufftCreate(&outplan));
+		CHECK_CUFFT_ERRORS(cufftPlan1d(&outplan, padded_size, CUFFT_C2R, 1));
+
+		/*CONVOLUTION*/
+		int blockSize = 256;
+		int numBlocks = (padded_size + blockSize - 1) / blockSize;
+
+		ComplexPointwiseMulOutPlace << < numBlocks, blockSize >> > (d_ibuf, d_rbuf, d_obuf, padded_size / 2 + 1);
+		getLastCudaError("Kernel execution failed [ ComplexPointwiseMulOutPlace]");
+		checkCudaErrors(cudaDeviceSynchronize());
+		CHECK_CUFFT_ERRORS(cufftExecC2R(outplan, d_obuf, (cufftReal*)d_obuf));
 		checkCudaErrors(cufftDestroy(outplan));
 	}
 }
