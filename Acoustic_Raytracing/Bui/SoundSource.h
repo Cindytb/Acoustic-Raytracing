@@ -49,8 +49,8 @@ public:
 		int mic_no);
 	void addBuffer(float *input, float* output, int mic_no);
 	void HACK_upload_ir(std::string input_file);
-	osc::LaunchParams* local_histogram;
 private:
+	osc::LaunchParams* local_histogram;
 	float* output;
 	float* buffered_input;
 	float* d_buffered_input;

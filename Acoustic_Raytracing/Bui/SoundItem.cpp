@@ -57,11 +57,11 @@ OptixPipeline SoundItem::pipeline;
 
 */
 float SoundItem::hist_bin_size = 0.004;
-float SoundItem::time_thres = 5;
+float SoundItem::time_thres = 10;
 float SoundItem::energy_thres = 1e-7;
 float SoundItem::dist_thres = 3430;
 float SoundItem::c = 343;
-int SoundItem::num_rays = 1;
+int SoundItem::num_rays = 1800;
 int SoundItem::freq_bands;
 int SoundItem::time_bins;
 
@@ -77,4 +77,7 @@ SoundItem::SoundItem() : m_position()
     gdt::vec3f default_orientation = {0,0,0};
     SoundItem(origin, default_orientation);
 
+}
+void SoundItem::updateSBT(OptixShaderBindingTable sbt){
+	SoundItem::sbt = sbt;
 }

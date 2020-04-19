@@ -19,6 +19,7 @@ public:
     static int freq_bands, time_bins, num_rays;
     static float hist_bin_size, time_thres, dist_thres, energy_thres, c;
     SoundItem(gdt::vec3f pos, gdt::vec3f orientation);
+    void updateSBT(OptixShaderBindingTable sbt);
     SoundItem();
 
 protected:
