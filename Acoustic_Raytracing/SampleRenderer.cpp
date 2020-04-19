@@ -691,7 +691,7 @@ void SampleRenderer::buildSBT()
 		rec.data.vertex = (vec3f *)vertexBuffer[meshID].d_pointer();
 		rec.data.index = (vec3i *)indexBuffer[meshID].d_pointer();
 		rec.data.isMic = meshID == 0 ? false : true;
-		float pyroom_absorption = 0.01; // TODO: Currently deprecated in pyroomacoustics. Need to change
+		float pyroom_absorption = 0.3; // TODO: Currently deprecated in pyroomacoustics. Need to change
 		rec.data.absorption = 1. - (1. - pyroom_absorption) * (1. - pyroom_absorption);
 		rec.data.micID = meshID == 0 ? -1 : 0;
 		rec.data.pos = meshes[meshID].m_center;
