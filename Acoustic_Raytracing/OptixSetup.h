@@ -27,16 +27,6 @@
 
 /*! \namespace osc - Optix Siggraph Course */
 namespace osc {
-
-	struct Camera {
-		/*! camera position - *from* where we are looking */
-		vec3f from;
-		/*! which point we are looking *at* */
-		vec3f at;
-		/*! general up-vector */
-		vec3f up;
-	};
-	
 	/*! a simple indexed triangle mesh that our sample renderer will
 			render */
 	struct TriangleMesh {
@@ -73,14 +63,6 @@ namespace osc {
 		/*! render one frame */
 		void render();
 
-		/*! resize frame buffer to given resolution */
-		void resize(const vec2i &newSize);
-
-		/*! download the rendered color buffer */
-		void downloadPixels(uint32_t h_pixels[]);
-
-		/*! set camera to render with */
-		void setCamera(const Camera &camera);
 
 		void auralize();
 		void add_mic(Microphone *mic);
@@ -161,11 +143,6 @@ namespace osc {
 		CUDABuffer   launchParamsBuffer;
 		/*! @} */
 
-		CUDABuffer colorBuffer;
-
-		/*! the camera we are to render with. */
-		Camera lastSetCamera;
-		
 		/*! the model we are going to trace rays against */
 		std::vector<TriangleMesh> meshes;
 		/*! one buffer per input mesh */

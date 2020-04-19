@@ -26,7 +26,6 @@ using namespace gdt;
 
 struct TriangleMeshSBTData
 {
-  vec3f color;
   vec3f *vertex;
   vec3i *index;
   bool isMic;
@@ -39,22 +38,7 @@ struct TriangleMeshSBTData
 struct LaunchData
 {
   bool dummy_launch = false;
-  struct
-  {
-    uint32_t *colorBuffer;
-    vec2i size;
-  } frame;
-
-  struct
-  {
-    vec3f position;
-    vec3f direction;
-    vec3f horizontal;
-    vec3f vertical;
-  } camera;
-
   OptixTraversableHandle traversable;
-
   float *d_histogram;
   float *d_transmitted;
   vec3f pos;

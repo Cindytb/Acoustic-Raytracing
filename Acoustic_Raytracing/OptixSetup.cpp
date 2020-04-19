@@ -301,8 +301,6 @@ OptixSetup::OptixSetup(const std::vector<TriangleMesh> &meshes)
 	std::cout << GDT_TERMINAL_DEFAULT;
 
 	std::cout << "Launching dummy kernel" << std::endl;
-	launchParams.frame.size.x = 1;
-
 	launchParams.dummy_launch = true;
 	render();
 	launchParams.dummy_launch = false;
@@ -688,7 +686,6 @@ void OptixSetup::buildSBT()
 		HitgroupRecord rec;
 		// all meshes use the same code, so all same hit group
 		OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[0], &rec));
-		rec.data.color = meshes[meshID].color;
 		rec.data.vertex = (vec3f *)vertexBuffer[meshID].d_pointer();
 		rec.data.index = (vec3i *)indexBuffer[meshID].d_pointer();
 		rec.data.isMic = meshID == 0 ? false : true;
@@ -708,10 +705,7 @@ void OptixSetup::buildSBT()
 /*! render one frame */
 void OptixSetup::render()
 {
-	// sanity check: make sure we launch only after first resize is
-	// already done:
-	if (launchParams.frame.size.x == 0)
-		return;
+
 	//for (int i = 1; i < 256; i++) {
 	//printf("i: %i\n", i);
 	//launchParams.frame.size.x = 1025;
@@ -725,7 +719,7 @@ void OptixSetup::render()
 							launchParamsBuffer.sizeInBytes,
 							&sbt,
 							/*! dimensions of the launch: */
-							launchParams.frame.size.x,
+							1,
 							1, // launchParams.frame.size.y,
 							1));
 	// sync - make sure the frame is rendered before we download and
@@ -735,42 +729,6 @@ void OptixSetup::render()
 	CUDA_SYNC_CHECK();
 	//}
 }
-
-/*! set camera to render with */
-void OptixSetup::setCamera(const Camera &camera)
-{
-	lastSetCamera = camera;
-	launchParams.camera.position = camera.from;
-	launchParams.camera.direction = normalize(camera.at - camera.from);
-	const float cosFovy = 0.66f;
-	const float aspect = launchParams.frame.size.x / float(launchParams.frame.size.y);
-	launchParams.camera.horizontal = cosFovy * aspect * normalize(cross(launchParams.camera.direction, camera.up));
-	launchParams.camera.vertical = cosFovy * normalize(cross(launchParams.camera.horizontal,
-															 launchParams.camera.direction));
-}
-
-/*! resize frame buffer to given resolution */
-void OptixSetup::resize(const vec2i &newSize)
-{
-	// resize our cuda frame buffer
-	colorBuffer.resize(newSize.x * newSize.y * sizeof(uint32_t));
-
-	// update the launch parameters that we'll pass to the optix
-	// launch:
-	launchParams.frame.size = newSize;
-	launchParams.frame.colorBuffer = (uint32_t *)colorBuffer.d_pointer();
-
-	// and re-set the camera, since aspect may have changed
-	setCamera(lastSetCamera);
-}
-
-/*! download the rendered color buffer */
-void OptixSetup::downloadPixels(uint32_t h_pixels[])
-{
-	colorBuffer.download(h_pixels,
-						 launchParams.frame.size.x * launchParams.frame.size.y);
-}
-
 void OptixSetup::add_mic(Microphone *mic)
 {
 	m_mics.push_back(mic);
