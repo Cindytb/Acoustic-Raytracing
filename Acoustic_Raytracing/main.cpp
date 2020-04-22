@@ -99,15 +99,17 @@ namespace osc
 		{
 			SoundItem::num_rays = atoi(av[1]);
 		}
-		std::cout << scene.size() << std::endl;
+
 		OptixSetup* renderer = new OptixSetup(scene);
 		SoundSource* src = new SoundSource();
 		Microphone* mic = new Microphone();
 		renderer->add_source(src);
 		renderer->add_mic(mic);
 
-		// renderer->auralize();
-		export_to_file(renderer);
+		std::cout << "Number of rays: " << SoundItem::num_rays << std::endl;
+		for(int i = 0; i < 1000; i++){
+			renderer->auralize();
+		}
 		// auralize_loop(renderer);
 		// HACK_auralize_loop(renderer);
 		return 0;

@@ -67,7 +67,7 @@ int next_pow_2(int v)
 //! add aligned cube with front-lower-left corner and size
 void TriangleMesh::addCube(const vec3f &center, const vec3f &size)
 {
-	PING;
+	// PING;
 	affine3f xfm;
 	xfm.p = center - 0.5f * size;
 	xfm.l.vx = vec3f(size.x, 0.f, 0.f);
@@ -123,7 +123,7 @@ void TriangleMesh::addUnitCube(const affine3f &xfm)
 		*/
 void TriangleMesh::addSphere(vec3f center, float radius, int recursionLevel)
 {
-	PING;
+	// PING;
 	affine3f xfm;
 	xfm.p = center;
 	xfm.l.vx = vec3f(radius, 0.f, 0.f);
@@ -256,20 +256,20 @@ OptixSetup::OptixSetup(const std::vector<TriangleMesh> &meshes)
 {
 	initOptix();
 
-	std::cout << "#osc: creating optix context ..." << std::endl;
+	// std::cout << "#osc: creating optix context ..." << std::endl;
 	createContext();
 
-	std::cout << "#osc: setting up module ..." << std::endl;
+	// std::cout << "#osc: setting up module ..." << std::endl;
 	createModule();
 
-	std::cout << "#osc: creating raygen programs ..." << std::endl;
+	// std::cout << "#osc: creating raygen programs ..." << std::endl;
 	createRaygenPrograms();
-	std::cout << "#osc: creating miss programs ..." << std::endl;
+	// std::cout << "#osc: creating miss programs ..." << std::endl;
 	createMissPrograms();
-	std::cout << "#osc: creating hitgroup programs ..." << std::endl;
+	// std::cout << "#osc: creating hitgroup programs ..." << std::endl;
 	createHitgroupPrograms();
 
-	std::cout << "#osc: building acceleration structure ..." << std::endl;
+	// std::cout << "#osc: building acceleration structure ..." << std::endl;
 	SoundItem::traversable = buildAccel();
 	// launchParams.traversable = buildAccel();
 	// launchParams.time_bins = 2500;
@@ -284,23 +284,23 @@ OptixSetup::OptixSetup(const std::vector<TriangleMesh> &meshes)
 	// kernels::fillWithZeroesKernel(launchParams.d_histogram, STRIDE * MAX_MICS);
 	// kernels::fillWithZeroesKernel(launchParams.d_transmitted, launchParams.freq_bands * MAX_MICS);
 	// DEBUG_CHECK();
-	std::cout << "#osc: setting up optix pipeline ..." << std::endl;
+	// std::cout << "#osc: setting up optix pipeline ..." << std::endl;
 	createPipeline();
 	SoundItem::pipeline = pipeline;
 
-	std::cout << "#osc: building SBT ..." << std::endl;
+	// std::cout << "#osc: building SBT ..." << std::endl;
 	buildSBT();
 
 	SoundItem::sbt = sbt;
 
 	launchParamsBuffer.alloc(sizeof(launchParams));
-	std::cout << "#osc: context, module, pipeline, etc, all set up ..." << std::endl;
+	// std::cout << "#osc: context, module, pipeline, etc, all set up ..." << std::endl;
 
-	std::cout << GDT_TERMINAL_GREEN;
-	std::cout << "#osc: Optix 7 Sample fully set up" << std::endl;
-	std::cout << GDT_TERMINAL_DEFAULT;
+	// std::cout << GDT_TERMINAL_GREEN;
+	// std::cout << "#osc: Optix 7 Sample fully set up" << std::endl;
+	// std::cout << GDT_TERMINAL_DEFAULT;
 
-	std::cout << "Launching dummy kernel" << std::endl;
+	// std::cout << "Launching dummy kernel" << std::endl;
 	launchParams.dummy_launch = true;
 	render();
 	launchParams.dummy_launch = false;
@@ -439,7 +439,7 @@ OptixTraversableHandle OptixSetup::buildAccel()
 /*! helper function that initializes optix and checks for errors */
 void OptixSetup::initOptix()
 {
-	std::cout << "#osc: initializing optix..." << std::endl;
+	// std::cout << "#osc: initializing optix..." << std::endl;
 
 	// -------------------------------------------------------
 	// check for available optix7 capable devices
@@ -449,15 +449,15 @@ void OptixSetup::initOptix()
 	cudaGetDeviceCount(&numDevices);
 	if (numDevices == 0)
 		throw std::runtime_error("#osc: no CUDA capable devices found!");
-	std::cout << "#osc: found " << numDevices << " CUDA devices" << std::endl;
+	// std::cout << "#osc: found " << numDevices << " CUDA devices" << std::endl;
 
 	// -------------------------------------------------------
 	// initialize optix
 	// -------------------------------------------------------
 	OPTIX_CHECK(optixInit());
-	std::cout << GDT_TERMINAL_GREEN
-			  << "#osc: successfully initialized optix... yay!"
-			  << GDT_TERMINAL_DEFAULT << std::endl;
+	// std::cout << GDT_TERMINAL_GREEN
+			  //<< "#osc: successfully initialized optix... yay!"
+			  //<< GDT_TERMINAL_DEFAULT << std::endl;
 }
 
 static void context_log_cb(unsigned int level,
@@ -465,7 +465,7 @@ static void context_log_cb(unsigned int level,
 						   const char *message,
 						   void *)
 {
-	fprintf(stderr, "[%2d][%12s]: %s\n", (int)level, tag, message);
+	// fprintf(stderr, "[%2d][%12s]: %s\n", (int)level, tag, message);
 }
 
 /*! creates and configures a optix device context (in this simple
@@ -478,7 +478,7 @@ void OptixSetup::createContext()
 	CUDA_CHECK(StreamCreate(&stream));
 
 	cudaGetDeviceProperties(&deviceProps, deviceID);
-	std::cout << "#osc: running on device: " << deviceProps.name << std::endl;
+	// std::cout << "#osc: running on device: " << deviceProps.name << std::endl;
 
 	CUresult cuRes = cuCtxGetCurrent(&cudaContext);
 	if (cuRes != CUDA_SUCCESS)
@@ -520,8 +520,8 @@ void OptixSetup::createModule()
 										 ptxCode.size(),
 										 log, &sizeof_log,
 										 &module));
-	if (sizeof_log > 1)
-		PRINT(log);
+	/*if (sizeof_log > 1)
+		PRINT(log);*/
 }
 
 /*! does all setup for the raygen program(s) we are going to use */
@@ -545,8 +545,8 @@ void OptixSetup::createRaygenPrograms()
 										&pgOptions,
 										log, &sizeof_log,
 										&raygenPGs[0]));
-	if (sizeof_log > 1)
-		PRINT(log);
+	/*if (sizeof_log > 1)
+		PRINT(log);*/
 }
 
 /*! does all setup for the miss program(s) we are going to use */
@@ -570,8 +570,8 @@ void OptixSetup::createMissPrograms()
 										&pgOptions,
 										log, &sizeof_log,
 										&missPGs[0]));
-	if (sizeof_log > 1)
-		PRINT(log);
+	/*if (sizeof_log > 1)
+		PRINT(log);*/
 }
 
 /*! does all setup for the hitgroup program(s) we are going to use */
@@ -597,8 +597,8 @@ void OptixSetup::createHitgroupPrograms()
 										log, &sizeof_log,
 										&hitgroupPGs[0]));
 	DEBUG_CHECK();
-	if (sizeof_log > 1)
-		PRINT(log);
+	/*if (sizeof_log > 1)
+		PRINT(log);*/
 	OptixStackSizes stackSizes;
 	optixProgramGroupGetStackSize(hitgroupPGs[0], &stackSizes);
 }
@@ -623,8 +623,8 @@ void OptixSetup::createPipeline()
 									(int)programGroups.size(),
 									log, &sizeof_log,
 									&pipeline));
-	if (sizeof_log > 1)
-		PRINT(log);
+	/*if (sizeof_log > 1)
+		PRINT(log);*/
 
 	OPTIX_CHECK(optixPipelineSetStackSize(/* [in] The pipeline to configure the stack size for */
 										  pipeline,
@@ -639,8 +639,8 @@ void OptixSetup::createPipeline()
 										  /* [in] The maximum depth of a traversable graph
 				   passed to trace. */
 										  1));
-	if (sizeof_log > 1)
-		PRINT(log);
+	/*if (sizeof_log > 1)
+		PRINT(log);*/
 }
 
 /*! constructs the shader binding table */
@@ -689,7 +689,7 @@ void OptixSetup::buildSBT()
 		rec.data.vertex = (vec3f *)vertexBuffer[meshID].d_pointer();
 		rec.data.index = (vec3i *)indexBuffer[meshID].d_pointer();
 		rec.data.isMic = meshID == 0 ? false : true;
-		float pyroom_absorption = 0.3; // TODO: Currently deprecated in pyroomacoustics. Need to change
+		float pyroom_absorption = 0.01; // TODO: Currently deprecated in pyroomacoustics. Need to change
 		rec.data.absorption = 1. - (1. - pyroom_absorption) * (1. - pyroom_absorption);
 		rec.data.micID = meshID == 0 ? -1 : 0;
 		rec.data.pos = meshes[meshID].m_center;

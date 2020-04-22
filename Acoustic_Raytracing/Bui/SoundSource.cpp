@@ -92,7 +92,7 @@ void SoundSource::trace()
 	m_local_histogram->dist_thres = dist_thres;
 	m_local_histogram->energy_thres = energy_thres;
 	m_local_histogram->c = c;
-	printf("num_rays: %i\n", num_rays);
+	// printf("num_rays: %i\n", num_rays);
 	checkCudaErrors(cudaMemcpy(d_local_histogram,
 		m_local_histogram,
 		sizeof(osc::LaunchData),
