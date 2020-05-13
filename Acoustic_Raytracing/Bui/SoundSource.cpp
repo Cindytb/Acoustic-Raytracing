@@ -44,7 +44,12 @@ SoundSource::SoundSource(gdt::vec3f pos, gdt::vec3f orientation)
 		m_buffered_input[i] = 0.0f;
 	}
 	checkCudaErrors(cudaMalloc(&d_buffered_input, (m_buffer_size + 2) * sizeof(float)));
-	scene_change = false;
+	scene_change = true;
+
+	checkCudaErrors(cudaMalloc(&d_transfer_function, (m_buffer_size + 2) * sizeof(float)));
+
+	kernels::fillWithZeroesKernel(d_transfer_function, m_buffer_size + 2);
+	kernels::fillWithZeroesKernel(d_buffered_input, m_buffer_size + 2);
 
 	checkCudaErrors(
 		cudaMalloc(&m_local_histogram->d_histogram,
@@ -61,7 +66,7 @@ SoundSource::SoundSource(gdt::vec3f pos, gdt::vec3f orientation)
 		m_local_histogram->d_transmitted, freq_bands * num_rays, m_stream);
 }
 
-void SoundSource::add_mic(Microphone& mic)
+void SoundSource::add_mic(Microphone* mic)
 {
 	m_microphones.push_back(mic);
 	m_histogram.push_back(new float[time_bins * freq_bands]);
@@ -92,6 +97,9 @@ void SoundSource::trace()
 	m_local_histogram->dist_thres = dist_thres;
 	m_local_histogram->energy_thres = energy_thres;
 	m_local_histogram->c = c;
+	m_local_histogram->fs = fs;
+	m_local_histogram->d_transfer_function = d_transfer_function;
+	m_local_histogram->buffer_size = m_buffer_size;
 	printf("num_rays: %i\n", num_rays);
 	checkCudaErrors(cudaMemcpy(d_local_histogram,
 		m_local_histogram,
@@ -188,23 +196,26 @@ void SoundSource::add_buffer(float* input)
 	if (scene_change)
 	{
 		trace();
-		compute_IRs();
-		for (int i = 0; i < num_mics; i++) {
-			cufft::forward_fft_wrapper(d_irs[i], m_buffer_size);
-		}
+		//compute_IRs();
+		//for (int i = 0; i < num_mics; i++) {
+			//cufft::forward_fft_wrapper(d_irs[i], m_buffer_size);
+		//}
+		// TODO: Currently only supports 1 microphone input
+		checkCudaErrors(cudaMemcpy(d_irs[0], d_transfer_function, (m_buffer_size + 2) * sizeof(float), cudaMemcpyDeviceToDevice));
 		scene_change = false;
 	}
 	for(int i = 0; i < num_mics; i++){
 		cufft::convolve_ifft_wrapper((cufftComplex*)d_buffered_input, (cufftComplex*)d_irs[i], (cufftComplex*)d_conv_bufs[i], m_buffer_size);
 		cufft::normalize_fft(d_conv_bufs[i], m_buffer_size);
-		checkCudaErrors(cudaMemcpyAsync(m_summing_bus[i], 
+		checkCudaErrors(cudaMemcpy(m_summing_bus[i], 
 			d_conv_bufs[i] + m_buffer_size - frames_per_buffer, 
 			frames_per_buffer * sizeof(float), 
-			cudaMemcpyDeviceToHost, 
-			m_stream));
-		float* output = m_microphones[i].get_output();
+			cudaMemcpyDeviceToHost
+			));
+		checkCudaErrors(cudaDeviceSynchronize());
+		float* output = m_microphones[i]->get_output();
 		// TODO: Turn this into an atomic addition to prevent data races
-		for(int j = 0; i < frames_per_buffer; j++){
+		for(int j = 0; j < frames_per_buffer; j++){
 			output[j] += m_summing_bus[i][j];
 		}
 	}
@@ -238,6 +249,30 @@ void TDconvolution(float* ibuf, float* rbuf, size_t iframes, size_t rframes, flo
 		}
 	}
 }
+void SoundSource::export_impulse_response(std::string filename,
+	int mic_no)
+{
+	int ir_length = (int)fs * time_thres;
+	float* r_buf = new float[m_buffer_size];
+	checkCudaErrors(cudaMemcpy(r_buf, d_transfer_function, m_buffer_size * sizeof(float), cudaMemcpyDeviceToHost));
+	cufft::normalize_fft(d_transfer_function, m_buffer_size);
+	checkCudaErrors(cudaMemcpy(r_buf, d_transfer_function, m_buffer_size * sizeof(float), cudaMemcpyDeviceToHost));
+	cufft::inverse_fft_wrapper(d_transfer_function, m_buffer_size);
+	checkCudaErrors(cudaMemcpy(r_buf, d_transfer_function, m_buffer_size * sizeof(float), cudaMemcpyDeviceToHost));
+	cufft::declip(d_transfer_function, m_buffer_size);
+	checkCudaErrors(cudaMemcpy(r_buf, d_transfer_function, m_buffer_size * sizeof(float), cudaMemcpyDeviceToHost));
+	for (int i = ir_length - 1; i >= 0; i--) {
+		if (fabs(r_buf[i]) > 1e-8) {
+			ir_length = i + 1;
+			break;
+		}
+	}
+	SndfileHandle ofile = SndfileHandle(filename, SFM_WRITE, SF_FORMAT_WAV | SF_FORMAT_PCM_24, 1, fs);
+
+	size_t count = ofile.write(r_buf, ir_length);
+	delete[] r_buf;
+}
+
 void SoundSource::convolve_file(std::string input_file,
 	std::string output_file,
 	int mic_no)
@@ -254,42 +289,12 @@ void SoundSource::convolve_file(std::string input_file,
 		printf("ERROR: Wrong sample rate\n");
 		exit(EXIT_FAILURE);
 	}
-	int ir_length = 0;
-	int max_ir_length = (int)time_thres * fs;
-	for (int i = 0; i < max_ir_length; i++)
-	{
-		if (m_irs[mic_no][i] > 0 || m_irs[mic_no][i] < 0)
-		{
-			ir_length = i;
-		}
-	}
-	// Ratchet integrator
-	int hist_bin_size_samples = SoundItem::fs * hist_bin_size;
-	float* ir = new float[ir_length + hist_bin_size_samples - 1];
-	float* ratchet_integrator = new float[hist_bin_size_samples];
-	for (int i = 0; i < hist_bin_size_samples; i++)
-	{
-		ratchet_integrator[i] = 1.0 / hist_bin_size_samples;
-	}
-	TDconvolution(m_irs[mic_no], ratchet_integrator, ir_length, hist_bin_size_samples, ir);
-	float max_val = 0;
-	for (int i = 0; i < ir_length; i++)
-	{
-		float local_val = fabs(ir[i]);
-		if (local_val > max_val)
-		{
-			max_val = local_val;
-		}
-	}
-#pragma omp parallel for
-	for (int i = 0; i < ir_length; i++)
-	{
-		ir[i] /= max_val;
-	}
+	int ir_length = (int)fs * time_thres;
 	size_t oframes = ifile.frames() + ir_length - 1;
 	size_t padded_size = next_pow_2(oframes);
 	float* input_buf, * d_input, * d_filter;
 	input_buf = new float[padded_size];
+	float* r_buf = new float[m_buffer_size];
 #pragma omp parallel for
 	for (int i = 0; i < padded_size; i++)
 	{
@@ -300,8 +305,15 @@ void SoundSource::convolve_file(std::string input_file,
 	checkCudaErrors(cudaMalloc(&d_filter, (padded_size + 2) * sizeof(float)));
 	kernels::fillWithZeroesKernel(d_input, padded_size + 2);
 	kernels::fillWithZeroesKernel(d_filter, padded_size + 2);
+	//cufft::normalize_fft(d_transfer_function, m_buffer_size);
+	checkCudaErrors(cudaMemcpy(r_buf, d_transfer_function, m_buffer_size * sizeof(float), cudaMemcpyDeviceToHost));
+	cufft::inverse_fft_wrapper(d_transfer_function, m_buffer_size);
+	checkCudaErrors(cudaMemcpy(r_buf, d_transfer_function, m_buffer_size * sizeof(float), cudaMemcpyDeviceToHost));
+	cufft::declip(d_transfer_function, m_buffer_size);
+	checkCudaErrors(cudaMemcpy(r_buf, d_transfer_function, m_buffer_size * sizeof(float), cudaMemcpyDeviceToHost)); 
+	
 	checkCudaErrors(cudaMemcpy(d_input, input_buf, ifile.frames() * sizeof(float), cudaMemcpyHostToDevice));
-	checkCudaErrors(cudaMemcpy(d_filter, m_irs[mic_no], ir_length * sizeof(float), cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMemcpy(d_filter, d_transfer_function, ir_length * sizeof(float), cudaMemcpyDeviceToDevice));
 
 	cufft::convolve(d_input, d_filter, padded_size);
 	checkCudaErrors(cudaDeviceSynchronize());

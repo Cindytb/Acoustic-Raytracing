@@ -28,8 +28,20 @@ namespace osc
 		try
 		{
 			renderer->auralize();
-			renderer->get_sources()[0]->compute_IRs();
-			renderer->get_sources()[0]->convolve_file("../Ex_441_mono.wav", "output.wav", 0);
+			renderer->get_sources()[0]->convolve_file("../../Ex_441_Mono.wav", "output.wav", 0);
+		}
+		catch (std::runtime_error& e)
+		{
+			std::cout << GDT_TERMINAL_RED << "FATAL ERROR: " << e.what()
+				<< GDT_TERMINAL_DEFAULT << std::endl;
+			exit(1);
+		}
+	}
+	void export_impulse_response(OptixSetup* renderer) {
+		try {
+			renderer->auralize();
+			renderer->get_sources()[0]->export_impulse_response("ir.wav", 0);
+
 		}
 		catch (std::runtime_error& e)
 		{
@@ -39,7 +51,7 @@ namespace osc
 		}
 	}
 	void HACK_auralize_loop(OptixSetup* renderer) {
-		
+
 		renderer->get_sources()[0]->HACK_upload_ir("../../reverb_mono_441.wav");
 		initializePA(SoundItem::fs, renderer);
 
@@ -52,7 +64,7 @@ namespace osc
 	void auralize_loop(OptixSetup* renderer) {
 		try
 		{
-			renderer->auralize();
+			//renderer->auralize();
 			initializePA(SoundItem::fs, renderer);
 
 			std::cout << "Hit 'q' and 'Enter' to quit the program" << std::endl;
@@ -106,9 +118,10 @@ namespace osc
 		renderer->add_source(src);
 		renderer->add_mic(mic);
 
-		// renderer->auralize();
-		export_to_file(renderer);
-		// auralize_loop(renderer);
+		//renderer->auralize();
+		//export_impulse_response(renderer);
+		//export_to_file(renderer);
+		auralize_loop(renderer);
 		// HACK_auralize_loop(renderer);
 		return 0;
 	}

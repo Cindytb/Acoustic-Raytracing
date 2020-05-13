@@ -1,12 +1,13 @@
 #include "audio.h"
 
 PaStream* stream;
-
+SndfileHandle ofile;
 void initializePA(int fs, osc::OptixSetup* renderer) {
 	PaError err;
 	/*PortAudio setup*/
 	PaStreamParameters outputParams;
 	PaStreamParameters inputParams;
+	ofile = SndfileHandle("out.wav", SFM_WRITE, SF_FORMAT_WAV | SF_FORMAT_PCM_24, 2, fs);
 
 	/* Initializing PortAudio */
 	err = Pa_Initialize();

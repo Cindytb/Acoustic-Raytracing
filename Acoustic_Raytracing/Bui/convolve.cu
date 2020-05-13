@@ -57,12 +57,28 @@ namespace cufft {
 #if defined WIN64 || CB == 0
 		/*NO CB VERSION*/
 		/*CONVOLUTION*/
-		int blockSize = 256;
-		int numBlocks = (paddedSize + blockSize - 1) / blockSize;
-
-		ComplexPointwiseMulInPlace << < numBlocks, blockSize >> > ((cufftComplex*)d_ibuf, (cufftComplex*)d_rbuf, paddedSize / 2 + 1);
-		getLastCudaError("Kernel execution failed [ ComplexPointwiseMulInPlace]");
-		checkCudaErrors(cudaDeviceSynchronize());
+		int numThreads = 256;
+		paddedSize = paddedSize / 2 + 1;
+		int numBlocks = (paddedSize + numThreads - 1) / numThreads;
+		if (numBlocks > 1024)
+		{
+			int num_iterations = (numBlocks + 1023) / 1024;
+			for (int i = 0; i < num_iterations; i++)
+			{
+				int curr_block_size = numBlocks > 1024 ? 1024 : numBlocks;
+				int curr_size = curr_block_size == 1024 ? curr_block_size * numThreads : paddedSize;
+				// printf("numThreads %i\t curr_block_size %i\n", numThreads, curr_block_size);
+				ComplexPointwiseMulInPlace<<<numThreads, curr_block_size>>>((cufftComplex *)d_ibuf, (cufftComplex *)d_rbuf, curr_size);
+				paddedSize -= curr_size;
+				numBlocks -= curr_block_size;
+				getLastCudaError("Kernel execution failed [ ComplexPointwiseMul]");
+				checkCudaErrors(cudaDeviceSynchronize());
+			}
+		}
+		else
+		{
+			ComplexPointwiseMulInPlace<<<numThreads, numBlocks>>>((cufftComplex *)d_ibuf, (cufftComplex *)d_rbuf, paddedSize);
+		}
 #else
 		/*Copy over the host copy of callback function*/
 		cufftCallbackLoadC hostCopyOfCallbackPtr;
@@ -109,15 +125,51 @@ namespace cufft {
 	}
 	
 	void normalize_fft(float* d_input, size_t padded_size) {
-		int blockSize = 256;
-		int numBlocks = (padded_size + blockSize - 1) / blockSize;
-		RealFloatScale << < blockSize, numBlocks >> > (d_input, padded_size, 1.0 / padded_size);
+		float scale_val = 1.0 / padded_size;
+		int numThreads = 256;
+		int numBlocks = (padded_size + numThreads - 1) / numThreads;
+		if (numBlocks > 1024)
+		{
+			int num_iterations = (numBlocks + 1023) / 1024;
+			for (int i = 0; i < num_iterations; i++)
+			{
+				int curr_block_size = numBlocks > 1024 ? 1024 : numBlocks;
+				int curr_size = curr_block_size == 1024 ? curr_block_size * numThreads : padded_size;
+				RealFloatScale<<<numThreads, curr_block_size>>>(d_input, curr_size, scale_val);
+
+				d_input += curr_block_size * numThreads;
+				padded_size -= curr_size;
+				numBlocks -= curr_block_size;
+			}
+		}
+		else
+		{
+			RealFloatScale<<<numThreads, numBlocks>>>(d_input, padded_size, 1.0 / padded_size);
+		}
 	}
-	void declip(float* d_input, size_t padded_size) {
+	void declip(float *d_input, size_t padded_size)
+	{
 		float max = DExtrema(d_input, padded_size);
-		int blockSize = 256;
-		int numBlocks = (padded_size + blockSize - 1) / blockSize;
-		RealFloatScale << < blockSize, numBlocks >> > (d_input, padded_size, 1.0 / max);
+		int numThreads = 256;
+		int numBlocks = (padded_size + numThreads - 1) / numThreads;
+		if (numBlocks > 1024)
+		{
+			int num_iterations = (numBlocks + 1023) / 1024;
+			for (int i = 0; i < num_iterations; i++)
+			{
+				int curr_block_size = numBlocks > 1024 ? 1024 : numBlocks;
+				int curr_size = curr_block_size == 1024 ? curr_block_size * numThreads : padded_size;
+				RealFloatScale<<<numThreads, curr_block_size>>>(d_input, curr_size, 1.0 / max);
+
+				d_input += curr_block_size * numThreads;
+				padded_size -= curr_size;
+				numBlocks -= curr_block_size;
+			}
+		}
+		else
+		{
+			RealFloatScale<<<numThreads, numBlocks>>>(d_input, padded_size, 1.0 / max);
+		}
 	}
 	void forward_fft_wrapper(float* d_input, size_t padded_size){
 		/*Create forward FFT plan*/
@@ -141,11 +193,29 @@ namespace cufft {
 		CHECK_CUFFT_ERRORS(cufftPlan1d(&outplan, padded_size, CUFFT_C2R, 1));
 #if defined WIN64 || CB == 0
 		/*NO CB VERSION*/
-		/*CONVOLUTION*/
-		int blockSize = 256;
-		int numBlocks = (padded_size + blockSize - 1) / blockSize;
+		padded_size /= 2;
+		padded_size += 1;
+		int numThreads = 256;
+		int numBlocks = (padded_size + numThreads - 1) / numThreads;
+		if (numBlocks > 1024)
+		{
+			int num_iterations = (numBlocks + 1023) / 1024;
+			for (int i = 0; i < num_iterations; i++)
+			{
+				int curr_block_size = numBlocks > 1024 ? 1024 : numBlocks;
+				int curr_size = curr_block_size == 1024 ? curr_block_size * numThreads : padded_size;
+				//ComplexPointwiseMul << < numThreads, numBlocks >> > ((cufftComplex*)d_ibuf, (cufftComplex*)d_rbuf, padded_size / 2 + 1);
+				ComplexPointwiseMulInPlace<<<numThreads, curr_block_size>>>((cufftComplex *)d_ibuf, (cufftComplex *)d_rbuf, curr_size);
+				d_ibuf += curr_block_size * numThreads;
+				padded_size -= curr_size;
+				numBlocks -= curr_block_size;
+			}
+		}
+		else
+		{
+			ComplexPointwiseMulInPlace<<<numThreads, numBlocks>>>((cufftComplex *)d_ibuf, (cufftComplex *)d_rbuf, padded_size);
+		}
 
-		ComplexPointwiseMulInPlace << < numBlocks, blockSize >> > (d_ibuf, d_rbuf, padded_size / 2 + 1);
 		getLastCudaError("Kernel execution failed [ ComplexPointwiseMulInPlace]");
 		checkCudaErrors(cudaDeviceSynchronize());
 #else

@@ -40,10 +40,11 @@ public:
 	SoundSource(gdt::vec3f pos, gdt::vec3f orientation);
 	~SoundSource();
 	
-	void add_mic(Microphone &mic);
+	void add_mic(Microphone* mic);
 	void trace();
 	void compute_IRs();
 	void convolve();
+	void export_impulse_response(std::string filename, int mic_no);
 	void convolve_file(std::string input_file,
 		std::string output_file,
 		int mic_no);
@@ -56,11 +57,13 @@ private:
 	
 	/* Rolling input for realtime convolution*/
 	float* m_buffered_input;
+	float* output;
+	float* buffered_input;
 	float* d_buffered_input;
 	size_t m_buffer_size;
 
 	/* Individual microphone data*/
-	std::vector<Microphone> m_microphones;
+	std::vector<Microphone*> m_microphones;
 	std::vector<float*> m_histogram;
 	std::vector<float*> m_irs;
 	std::vector<float*> d_irs;

@@ -62,7 +62,7 @@ float SoundItem::time_thres = 10;
 float SoundItem::energy_thres = 1e-7;
 float SoundItem::dist_thres = 3430;
 float SoundItem::c = 343;
-int SoundItem::num_rays = 1800;
+int SoundItem::num_rays = 100000;
 int SoundItem::freq_bands;
 int SoundItem::time_bins;
 

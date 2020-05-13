@@ -39,12 +39,13 @@ struct LaunchData
 {
   bool dummy_launch = false;
   OptixTraversableHandle traversable;
+  float* d_transfer_function;
   float *d_histogram;
   float *d_transmitted;
   vec3f pos;
   vec3f orientation;
-  int freq_bands, time_bins;
-  float dist_thres, hist_bin_size, energy_thres, c;
+  int freq_bands, time_bins, buffer_size;
+  float dist_thres, hist_bin_size, energy_thres, c, fs;
 };
 
 } // namespace osc

@@ -733,7 +733,7 @@ void OptixSetup::add_mic(Microphone *mic)
 {
 	m_mics.push_back(mic);
 	for (int i = 0; i < m_sources.size(); i++) {
-		m_sources[i]->add_mic(*mic);
+		m_sources[i]->add_mic(mic);
 	}
 }
 void OptixSetup::add_source(SoundSource *src)

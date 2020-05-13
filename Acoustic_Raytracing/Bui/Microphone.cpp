@@ -4,11 +4,11 @@
 
 Microphone::Microphone()
 {
-    new (this) Microphone({0, 0, 0}, {0, 0, 0}, 256);
+    new (this) Microphone({0, 0, 0}, {0, 0, 0}, FRAMES_PER_BUFFER);
 }
 Microphone::Microphone(gdt::vec3f pos)
 {
-    new (this) Microphone(pos, {0, 0, 0}, 256);
+    new (this) Microphone(pos, {0, 0, 0}, FRAMES_PER_BUFFER);
 }
 Microphone::Microphone(gdt::vec3f pos, gdt::vec3f orientation,
                        int frames_per_buffer)
