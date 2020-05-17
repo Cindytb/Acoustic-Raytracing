@@ -39,6 +39,11 @@ compiler (tested with Visual Studio 2017 and 2019 under Windows, and GCC under
 Linux), and the OptiX 7 SDK (including CUDA 10.1 and NVIDIA driver recent
 enough to support OptiX).
 
+## Project Documentation & Diagrams
+
+Here is a pdf of a UML diagram for the [sound objects](docs/SoundItems.pdf). Here is another UML of the [Optix-specific classes](docs/OptixClasses.pdf).
+Lastly, here is a high level diagram of the [program flow](docs/ProgramFlow.pdf)
+
 ## Dependencies
 
 - a compiler

@@ -1,0 +1,85 @@
+\documentclass[letter,12pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage{fullpage}
+
+\usepackage{tikz-uml}
+\begin{document}
+\thispagestyle{empty} 
+\begin{figure}[!ht]
+\begin{center}
+\begin{tikzpicture} 
+\umlclass{SoundItem} 
+{
+    \# position : vec3f \\
+    \# orientation : vec3f \\
+    \umlstatic{\# num\_src : int} \\
+    \umlstatic{\# num\_mics : int} \\
+    \umlstatic{\# freq\_bands : int} \\
+    \umlstatic{\# time\_bins : int} \\
+    \umlstatic{\# hist\_res : int} \\
+    \umlstatic{\# num\_rays : int} \\
+    \umlstatic{\# sbt : OptixShaderBindingTable} \\
+    \umlstatic{\# traversable : OptixTraversableHandle} \\
+    \umlstatic{\# pipeline : OptixPipeline} \\
+} 
+{
+    + SoundItem() \\
+    + SoundItem(position : vec3f, \\
+    \indent \indent orientation : vec3f)\\
+    + updateSBT(sbt : \\
+     \indent OptixShaderBindingTable) \\
+    + updateTraversable(traversable : \\
+     \indent OptixTraversableHandle) \\
+    + updatePipeline(pipeline : \\
+     \indent OptixPipeline)
+}
+
+\umlclass[x=-4,y=-6.5, anchor=north]{SoundSource} 
+{
+    - m\_local\_histogram: LaunchData* \\
+    - d\_local\_histogram: LaunchData* \\
+    - m\_buffered\_input: float* \\
+    - d\_buffered\_input: float* \\
+    - m\_buffer\_size: size\_t \\
+    - m\_microphones: vector<Microphone> \\
+    - m\_histogram: vector<float*> \\
+    - m\_irs: vector<float*> \\
+    - d\_irs: vector<float* \\
+    - scene\_change: bool \\
+    - m\_stream: cudaStream\_t \\
+} 
+{
+    + SoundSource() \\
+    + SoundSource(pos: vec3f) \\
+    + SoundSource(pos: vec3f, \\
+        \indent \indent orientation: vec3f) \\
+    + add\_mic(mic: Microphone\&) : void \\
+    + trace(): void \\
+    + compute\_ir(): void \\
+    + add\_buffer(input: float*) \\
+    + convolve\_file(input\_file: string, \\ 
+         \indent output\_file: string, mic\_no: int): void\\
+}
+
+\umlclass[x=4,y=-6.5, anchor=north]{Microphone} 
+{
+    - m\_output: float* \\
+} 
+{
+ + Microphone() \\
+ + Microphone(pos: vec3f) \\
+ + Microphone(pos: vec3f,\\
+    \indent orientation: vec3f) \\
+ + attach\_output(output: float*): void \\
+ + zero\_output(): void \\
+ + get\_output(): float* \\
+}
+
+\umlinherit{SoundItem}{SoundSource}
+\umlinherit{SoundItem}{Microphone}
+\end{tikzpicture}
+\end{center}
+\end{figure}
+\end{document}

@@ -1,0 +1,76 @@
+\documentclass[letter,12pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage{fullpage}
+
+\usepackage{tikz-uml}
+\begin{document}
+\thispagestyle{empty} 
+\begin{center}
+\begin{tikzpicture} 
+\umlclass[x=-4, anchor=north]{LaunchData} 
+{
+    + dummy\_launch: bool \\
+    + d\_histogram: float* \\
+    + d\_transmitted: float* \\
+    + pos: vec3f \\
+    + orientation: vec3f \\
+    + freq\_bands: int \\
+    + time\_bins: int \\
+    + dist\_thres: float \\
+    + hist\_bin\_size: float \\
+    + energy\_thres: float \\
+    + c: float \\
+}{}
+\umlclass[x=-4, y=-10]{ClosestHitRecord} 
+{
+    + vertex: vec3f* \\
+    + index: vec3f* \\
+    + is\_mic: bool \\
+    + mic\_ID: int \\
+    + absorption: float\\
+    + pos: vec3f \\
+    + orientation: vec3f
+} {}
+
+\umlclass[x=4, anchor=north]{TriangleMesh}
+{
+	+ vertex:vector<vec3f> \\
+	+ index: vector<vec3ui> index \\
+	+ m\_center: vec3f \\
+	+ m\_radius: vec3f \\
+}
+{
+    + addCube(center: vec3f, size: vec3f) \\
+    + addSphere(center: vec3f, radius: float) \\
+}
+\umlclass[x=4, y=-5, anchor=north]{Model} 
+{
+    + meshes: vector<TriangleMesh*> \\
+    + bounds: box3f \\
+} {}
+
+\umlclass[x=4, y=-8, anchor=north]{OptixSetup}
+{
+    \# sbt: OptixShaderBindingTable \\
+    \textit{... other Optix specific variables} \\
+    \# m\_sources: vector<SoundSource*> \\
+    \# m\_mics: vector<Microphone*> \\
+}
+{
+    + OptixSetup(Model *) \\
+    + uploadModel(Model* ): void \\
+    \textit{ ... other Optix specific initialization functions} \\
+    + buildSBT(): void \\
+    + buildAccel(): OptixTraversableHandle \\
+    + add\_mic(mic: Microphone): void \\
+    + add\_source(src: SoundSource): void \\
+    + get\_microphones(): vector<Microphone*> \\
+    + get\_sources(): vector<SoundSource*> \\
+    + auralize(); void
+}
+\end{tikzpicture}
+\end{center}
+\end{figure}
+\end{document}
