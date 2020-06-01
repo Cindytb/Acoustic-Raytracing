@@ -39,6 +39,13 @@ compiler (tested with Visual Studio 2017 and 2019 under Windows, and GCC under
 Linux), and the OptiX 7 SDK (including CUDA 10.1 and NVIDIA driver recent
 enough to support OptiX).
 
+## Corelink Expansion
+This branch includes Corelink support and deployment via a Docker. 
+This docker image requires the Corelink custom image based off the CUDA 10.2 Ubuntu 18.04 development image.
+Look inside `networktest/clients/Docker/cuda-10.2` for instructions on how to build the image.
+In addition, this docker image requires you to download the OptiX 7 SDK into `Acoustic-Raytracing`.
+Download the Linux SDK into the current working directory and make sure the folder name is `NVIDIA-OptiX-SDK-7.0.0-linux64`
+
 ## Project Documentation & Diagrams
 
 Here is a pdf of a UML diagram for the [sound objects](docs/SoundItems.pdf). Here is another UML of the [Optix-specific classes](docs/OptixClasses.pdf).

@@ -16,6 +16,7 @@
 
 #include "OptixSetup.h"
 #include "audio.h"
+#include "corelink.h"
 
 #include <chrono>
 #include <thread>
@@ -121,8 +122,9 @@ namespace osc
 		//renderer->auralize();
 		//export_impulse_response(renderer);
 		//export_to_file(renderer);
-		auralize_loop(renderer);
+		// auralize_loop(renderer);
 		// HACK_auralize_loop(renderer);
+		corelink_loop(renderer);
 		return 0;
 	}
 	
