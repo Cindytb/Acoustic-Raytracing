@@ -23,17 +23,16 @@ project(Acoustic_Raytracing)
 cmake_minimum_required(VERSION 2.8)
 if (NOT WIN32)
 # visual studio doesn't like these (not need them):
-set (CMAKE_CXX_FLAGS "--std=c++11")
-set (CUDA_PROPAGATE_HOST_FLAGS ON)
-set (SNDFILE_LIB sndfile.so)
-set (PORTAUDIO_LIB libportaudio.so)
-set (SNDFILE_INCLUDE_DIR /usr/include) # For standalone linux
-set (PORTAUDIO_INCLUDE_DIR /usr/include) # For standalone linux
+  set (CMAKE_CXX_FLAGS "--std=c++11")
+  set (CUDA_PROPAGATE_HOST_FLAGS ON)
+  link_directories(/usr/lib /usr/lib/x86_64-linux-gnu)
+  include_directories(/usr/include)
+  set(CMAKE_CXX_FLAGS -pthread)
 else(WIN32)
-set (SNDFILE_LIB libsndfile-1.lib)
-set (PORTAUDIO_LIB portaudio_x64.lib)
-set (SNDFILE_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/common/libsndfile) # For windows, put precompiled .lib in repo
-set (PORTAUDIO_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/common/portaudio) # For windows, put precompiled .lib in repo
+  set (SNDFILE_LIB libsndfile-1.lib)
+  set (PORTAUDIO_LIB portaudio_x64.lib)
+  set (SNDFILE_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/common/libsndfile) # For windows, put precompiled .lib in repo
+  set (PORTAUDIO_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/common/portaudio) # For windows, put precompiled .lib in repo
 endif()
 
 # ------------------------------------------------------------------

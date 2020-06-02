@@ -51,36 +51,36 @@ namespace osc
 			exit(1);
 		}
 	}
-	void HACK_auralize_loop(OptixSetup* renderer) {
+	// void HACK_auralize_loop(OptixSetup* renderer) {
 
-		renderer->get_sources()[0]->HACK_upload_ir("../../reverb_mono_441.wav");
-		initializePA(SoundItem::fs, renderer);
+	// 	renderer->get_sources()[0]->HACK_upload_ir("../../reverb_mono_441.wav");
+	// 	initializePA(SoundItem::fs, renderer);
 
-		std::cout << "Hit 'q' and 'Enter' to quit the program" << std::endl;
-		char q = 'a';
-		while (q != 'q') {
-			q = getchar();
-		}
-	}
-	void auralize_loop(OptixSetup* renderer) {
-		try
-		{
-			//renderer->auralize();
-			initializePA(SoundItem::fs, renderer);
+	// 	std::cout << "Hit 'q' and 'Enter' to quit the program" << std::endl;
+	// 	char q = 'a';
+	// 	while (q != 'q') {
+	// 		q = getchar();
+	// 	}
+	// }
+	// void auralize_loop(OptixSetup* renderer) {
+	// 	try
+	// 	{
+	// 		//renderer->auralize();
+	// 		initializePA(SoundItem::fs, renderer);
 
-			std::cout << "Hit 'q' and 'Enter' to quit the program" << std::endl;
-			char q = 'a';
-			while (q != 'q') {
-				q = getchar();
-			}
-		}
-		catch (std::runtime_error& e)
-		{
-			std::cout << GDT_TERMINAL_RED << "FATAL ERROR: " << e.what()
-				<< GDT_TERMINAL_DEFAULT << std::endl;
-			exit(1);
-		}
-	}
+	// 		std::cout << "Hit 'q' and 'Enter' to quit the program" << std::endl;
+	// 		char q = 'a';
+	// 		while (q != 'q') {
+	// 			q = getchar();
+	// 		}
+	// 	}
+	// 	catch (std::runtime_error& e)
+	// 	{
+	// 		std::cout << GDT_TERMINAL_RED << "FATAL ERROR: " << e.what()
+	// 			<< GDT_TERMINAL_DEFAULT << std::endl;
+	// 		exit(1);
+	// 	}
+	// }
 	/*! main entry point to this example - initially optix, print hello
 			world, then exit */
 	extern "C" int main(int ac, char** av)

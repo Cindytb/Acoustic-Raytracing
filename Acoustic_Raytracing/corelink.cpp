@@ -3,17 +3,16 @@
 CorelinkWrapper::RecvStream receiver_stream;
 CorelinkWrapper::SendStream sender_stream;
 osc::OptixSetup *setup;
+float* output;
 void receive_callback(const char *source, const char *msg, int size, long long timestamp)
 {
   std::cout << "Received Data from " << source << " at " << timestamp << std::endl;
-  /* Cast data passed through stream to our structure. */
-  float *output = (float *)outputBuffer;
-  float *input = (float *)inputBuffer;
+  float *input = (float *)msg;
   setup->get_microphones()[0]->attach_output(output);
   setup->get_sources()[0]->add_buffer(input);
 
   const char *char_output = reinterpret_cast<const char *>(output);
-  std::string string_output(char_output, char_output + frames_per_buffer * 2 * sizeof(float));
+  std::string string_output(char_output, char_output + FRAMES_PER_BUFFER * 2 * sizeof(float));
   sender_stream.Send(string_output);
 }
 
@@ -53,18 +52,18 @@ bool Connect()
 }
 int corelink_loop(osc::OptixSetup *renderer)
 {
-
+  output = new float[FRAMES_PER_BUFFER];
   setup = renderer;
   try
   {
     Connect();
     std::string meta("Dummy metadata");
     std::cout << "\n----Creating Sender:" << std::endl;
-    sender_stream = CorelinkWrapper::addSender("Infinite", "audio", meta, true, true, (int)CorelinkWrapper::STATE_UDP);
-    std::cout << CorelinkWrapper::StreamData::getSenderData(terry_441->sender_stream_id) << std::endl;
+    sender_stream = CorelinkWrapper::addSender("Holodeck", "audio", meta, true, true, (int)CorelinkWrapper::STATE_UDP);
+    std::cout << CorelinkWrapper::StreamData::getSenderData(sender_stream) << std::endl;
 
     std::cout << "\n----Creating Receiver:" << std::endl;
-    receiver_stream = CorelinkWrapper::addReceiver("Infinite", {"audio", "receiver", "infinite"}, meta, false, true, (int)CorelinkWrapper::STATE_UDP);
+    receiver_stream = CorelinkWrapper::addReceiver("Holodeck", {"audio", "receiver", "infinite"}, meta, false, true, (int)CorelinkWrapper::STATE_UDP);
     receiver_stream.SetOnRecieve(&receive_callback);
     std::cout << CorelinkWrapper::StreamData::getReceiverData(receiver_stream) << std::endl;
 
